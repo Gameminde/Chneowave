@@ -1,0 +1,601 @@
+# integrate_full_ui.yml - Intégration complète GUI avec modules optimisés
+# Fusionne ProcessingWorker/AcquisitionController avec OptimizedFFTProcessor/OptimizedGodaAnalyzer
+# Remonte CircularBuffer, modernise GUI PyQtGraph, ajoute contrôles Start/Stop/Export
+
+name: "Intégration UI Complète CHNeoWave"
+version: "1.0.0"
+description: "Migration complète vers modules optimisés avec GUI modernisée"
+
+tasks:
+  # Phase 1: Migration ProcessingWorker vers modules optimisés
+  - name: "migrate_processing_worker"
+    type: "code_refactor"
+    source: "logciel hrneowave/processing_worker.py"
+    target: "gui/processing/optimized_worker.py"
+    actions:
+      - replace_imports:
+          old: |
+            import numpy as np
+            from scipy import signal
+            from scipy.signal import welch
+          new: |
+            import numpy as np
+            from src.hrneowave.core import OptimizedFFTProcessor, OptimizedGodaAnalyzer, CircularBuffer
+            from src.hrneowave.core import BufferConfig, ProbeGeometry
+      
+      - replace_class_init:
+          old: |
+            def __init__(self, acquisition_controller, config: Dict[str, Any]):
+                super().__init__()
+                self.acquisition_controller = acquisition_controller
+                self.config = config
+                # Buffers circulaires pour chaque sonde
+                self.data_buffers = {}
+                self.buffer_size = config.get('buffer_size', 4096)
+                self._init_buffers()
+          new: |
+            def __init__(self, acquisition_controller, config: Dict[str, Any]):
+                super().__init__()
+                self.acquisition_controller = acquisition_controller
+                self.config = config
+                
+                # Configuration buffer optimisé
+                buffer_config = BufferConfig(
+                    n_channels=config.get('n_channels', 4),
+                    buffer_size=config.get('buffer_size', 4096),
+                    sample_rate=config.get('sample_rate', 32.0),
+                    dtype=np.float32
+                )
+                self.circular_buffer = CircularBuffer(buffer_config)
+                
+                # Processeur FFT optimisé
+                self.fft_processor = OptimizedFFTProcessor(
+                    n_channels=buffer_config.n_channels,
+                    fft_size=config.get('window_size', 1024),
+                    sample_rate=buffer_config.sample_rate
+                )
+                
+                # Analyseur Goda optimisé
+                probe_geometry = ProbeGeometry(
+                    positions=config.get('probe_positions', [0, 1, 2, 3]),
+                    water_depth=config.get('water_depth', 10.0)
+                )
+                self.goda_analyzer = OptimizedGodaAnalyzer(probe_geometry)
+      
+      - replace_method:
+          name: "_compute_optimized_fft"
+          old: |
+            def _compute_optimized_fft(self, data: Dict[str, np.ndarray]) -> Dict[str, Any]:
+                results = {}
+                try:
+                    for probe_id, signal_data in data.items():
+                        # Prétraitement rapide
+                        processed_signal = self._preprocess_signal(signal_data)
+                        # FFT avec fenêtrage
+                        window = signal.windows.hann(len(processed_signal))
+                        windowed_signal = processed_signal * window
+                        # Calcul FFT
+                        fft_result = np.fft.fft(windowed_signal)
+                        freqs = np.fft.fftfreq(len(windowed_signal), 1/self.sample_rate)
+                        # Garder seulement les fréquences positives
+                        positive_freqs = freqs[:len(freqs)//2]
+                        positive_fft = fft_result[:len(fft_result)//2]
+                        # Densité spectrale de puissance
+                        psd = np.abs(positive_fft)**2 / (self.sample_rate * len(windowed_signal))
+                        # Phase
+                        phase = np.angle(positive_fft)
+                        results[probe_id] = {
+                            'freqs': positive_freqs,
+                            'psd': psd,
+                            'phase': phase,
+                            'fft_complex': positive_fft
+                        }
+                except Exception as e:
+                    self.processingError.emit(f"Erreur FFT: {str(e)}")
+                return results
+          new: |
+            def _compute_optimized_fft(self, data: Dict[str, np.ndarray]) -> Dict[str, Any]:
+                """Calcul FFT optimisé utilisant OptimizedFFTProcessor"""
+                try:
+                    # Convertir les données au format attendu
+                    channel_data = np.array([data[f'probe_{i}'] for i in range(len(data))])
+                    
+                    # Utiliser le processeur FFT optimisé (gain +500%)
+                    spectrum_result = self.fft_processor.compute_spectrum(channel_data)
+                    
+                    # Reformater pour compatibilité
+                    results = {}
+                    for i, probe_id in enumerate(data.keys()):
+                        results[probe_id] = {
+                            'freqs': spectrum_result['frequencies'],
+                            'psd': spectrum_result['psd'][i],
+                            'phase': spectrum_result['phase'][i],
+                            'fft_complex': spectrum_result['complex_spectrum'][i]
+                        }
+                    
+                    return results
+                    
+                except Exception as e:
+                    self.processingError.emit(f"Erreur FFT optimisé: {str(e)}")
+                    return {}
+      
+      - replace_method:
+          name: "_compute_optimized_goda"
+          old: |
+            def _compute_optimized_goda(self, data: Dict[str, np.ndarray], 
+                                       spectra: Dict[str, Any]) -> Dict[str, Any]:
+                try:
+                    if not spectra or len(spectra) < 2:
+                        return {}
+                    # Prendre les deux premières sondes pour l'analyse
+                    probe_ids = list(spectra.keys())[:2]
+                    probe1_id, probe2_id = probe_ids[0], probe_ids[1]
+                    spec1 = spectra[probe1_id]
+                    spec2 = spectra[probe2_id]
+                    freqs = spec1['freqs']
+                    # ... calculs manuels Goda ...
+                except Exception as e:
+                    self.processingError.emit(f"Erreur Goda: {str(e)}")
+                    return {}
+          new: |
+            def _compute_optimized_goda(self, data: Dict[str, np.ndarray], 
+                                       spectra: Dict[str, Any]) -> Dict[str, Any]:
+                """Analyse Goda optimisée utilisant OptimizedGodaAnalyzer"""
+                try:
+                    if not spectra or len(spectra) < 2:
+                        return {}
+                    
+                    # Préparer les données pour l'analyseur optimisé
+                    wave_data = {
+                        'frequencies': spectra[list(spectra.keys())[0]]['freqs'],
+                        'complex_spectra': [spec['fft_complex'] for spec in spectra.values()],
+                        'psd': [spec['psd'] for spec in spectra.values()]
+                    }
+                    
+                    # Utiliser l'analyseur Goda optimisé (gain +1000%)
+                    wave_components = self.goda_analyzer.analyze_waves(wave_data)
+                    
+                    # Convertir au format attendu
+                    return {
+                        'Hs': wave_components.significant_height,
+                        'Tp': wave_components.peak_period,
+                        'Tm': wave_components.mean_period,
+                        'Cr': wave_components.reflection_coefficient,
+                        'direction': wave_components.mean_direction,
+                        'm0_incident': wave_components.incident_energy,
+                        'm0_reflected': wave_components.reflected_energy,
+                        'peak_frequency': wave_components.peak_frequency
+                    }
+                    
+                except Exception as e:
+                    self.processingError.emit(f"Erreur Goda optimisé: {str(e)}")
+                    return {}
+      
+      - replace_method:
+          name: "_read_new_data"
+          old: |
+            def _read_new_data(self):
+                """Lit les nouvelles données du contrôleur d'acquisition"""
+                if not self.acquisition_controller:
+                    return
+                try:
+                    # Obtenir les données temps réel
+                    time_data, channel_data = self.acquisition_controller.get_real_time_data()
+                    if time_data is not None and channel_data is not None:
+                        # Ajouter aux buffers
+                        self._mutex.lock()
+                        try:
+                            for i, data in enumerate(channel_data):
+                                if i < self.n_channels and len(data) > 0:
+                                    # Ajouter les nouveaux échantillons
+                                    for sample in data:
+                                        self.data_buffers[f'probe_{i}'].append(sample)
+                        finally:
+                            self._mutex.unlock()
+                except Exception as e:
+                    self.processingError.emit(f"Erreur lecture données: {str(e)}")
+          new: |
+            def _read_new_data(self):
+                """Lit les nouvelles données via CircularBuffer optimisé"""
+                if not self.acquisition_controller:
+                    return
+                try:
+                    # Obtenir les données temps réel
+                    time_data, channel_data = self.acquisition_controller.get_real_time_data()
+                    
+                    if time_data is not None and channel_data is not None:
+                        # Écriture thread-safe dans le buffer circulaire
+                        data_array = np.array(channel_data, dtype=np.float32)
+                        success = self.circular_buffer.write(data_array)
+                        
+                        if not success:
+                            self.processingError.emit("Buffer overflow détecté")
+                            
+                except Exception as e:
+                    self.processingError.emit(f"Erreur lecture données: {str(e)}")
+
+  # Phase 2: Migration AcquisitionController
+  - name: "migrate_acquisition_controller"
+    type: "code_refactor"
+    source: "logciel hrneowave/acquisition_controller.py"
+    target: "gui/acquisition/optimized_controller.py"
+    actions:
+      - add_imports:
+          imports: |
+            from src.hrneowave.core import CircularBuffer, BufferConfig
+            from src.hrneowave.hw import create_acquisition_controller
+            from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+      
+      - enhance_class:
+          name: "AcquisitionController"
+          add_signals: |
+            # Signaux Qt thread-safe pour GUI
+            dataReady = pyqtSignal(dict)  # {timestamp, spectra}
+            statsUpdated = pyqtSignal(dict)  # {Hs, Tp, Cr, direction}
+            bufferStatus = pyqtSignal(dict)  # {fill_ratio, overflow_count}
+            errorOccurred = pyqtSignal(str)
+          
+          add_methods: |
+            def get_buffer_stats(self) -> dict:
+                """Retourne les statistiques du buffer circulaire"""
+                if hasattr(self, 'processing_worker') and self.processing_worker:
+                    return self.processing_worker.circular_buffer.get_stats()
+                return {}
+            
+            def export_current_data(self, filepath: str) -> bool:
+                """Exporte les données actuelles du buffer"""
+                try:
+                    if hasattr(self, 'processing_worker') and self.processing_worker:
+                        available = self.processing_worker.circular_buffer.available_samples()
+                        if available > 0:
+                            data = self.processing_worker.circular_buffer.read(available)
+                            np.save(filepath, data)
+                            return True
+                    return False
+                except Exception as e:
+                    self.errorOccurred.emit(f"Erreur export: {str(e)}")
+                    return False
+
+  # Phase 3: Modernisation GUI avec PyQtGraph
+  - name: "modernize_gui"
+    type: "code_refactor"
+    source: "logciel hrneowave/acquisition.py"
+    target: "gui/acquisition/modern_acquisition_window.py"
+    actions:
+      - replace_imports:
+          old: |
+            import matplotlib.pyplot as plt
+            from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+            from matplotlib.figure import Figure
+          new: |
+            import pyqtgraph as pg
+            from pyqtgraph import PlotWidget, GraphicsLayoutWidget
+            import pyqtgraph.exporters
+      
+      - add_control_panel:
+          widget_name: "ControlPanel"
+          controls: |
+            # Panneau de contrôle moderne
+            self.control_layout = QHBoxLayout()
+            
+            # Boutons Start/Stop/Export
+            self.start_btn = QPushButton("▶ Start")
+            self.start_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #4CAF50;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #45a049;
+                }
+            """)
+            
+            self.stop_btn = QPushButton("⏸ Stop")
+            self.stop_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #f44336;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #da190b;
+                }
+            """)
+            
+            self.export_btn = QPushButton("💾 Export")
+            self.export_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #2196F3;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    font-size: 14px;
+                    border-radius: 5px;
+                }
+                QPushButton:hover {
+                    background-color: #1976D2;
+                }
+            """)
+            
+            # Indicateurs de statut
+            self.status_label = QLabel("Status: Arrêté")
+            self.buffer_label = QLabel("Buffer: 0%")
+            self.latency_label = QLabel("Latence: 0ms")
+            
+            # Layout
+            self.control_layout.addWidget(self.start_btn)
+            self.control_layout.addWidget(self.stop_btn)
+            self.control_layout.addWidget(self.export_btn)
+            self.control_layout.addStretch()
+            self.control_layout.addWidget(self.status_label)
+            self.control_layout.addWidget(self.buffer_label)
+            self.control_layout.addWidget(self.latency_label)
+      
+      - replace_plotting:
+          old: |
+            # Matplotlib plots
+            self.figure = Figure()
+            self.canvas = FigureCanvas(self.figure)
+            self.ax1 = self.figure.add_subplot(211)
+            self.ax2 = self.figure.add_subplot(212)
+          new: |
+            # PyQtGraph plots modernes
+            self.graphics_layout = GraphicsLayoutWidget()
+            
+            # Graphique temps réel des signaux
+            self.time_plot = self.graphics_layout.addPlot(
+                title="Signaux Temps Réel",
+                labels={'left': 'Amplitude (m)', 'bottom': 'Temps (s)'}
+            )
+            self.time_plot.setLabel('left', 'Amplitude', units='m')
+            self.time_plot.setLabel('bottom', 'Temps', units='s')
+            self.time_plot.showGrid(x=True, y=True)
+            
+            # Graphique spectral
+            self.graphics_layout.nextRow()
+            self.spectrum_plot = self.graphics_layout.addPlot(
+                title="Spectre de Puissance",
+                labels={'left': 'PSD (m²/Hz)', 'bottom': 'Fréquence (Hz)'}
+            )
+            self.spectrum_plot.setLogMode(y=True)
+            self.spectrum_plot.showGrid(x=True, y=True)
+            
+            # Courbes pour chaque sonde
+            self.time_curves = []
+            self.spectrum_curves = []
+            colors = ['r', 'g', 'b', 'y', 'c', 'm', 'w', 'k']
+            
+            for i in range(8):  # Max 8 sondes
+                # Courbe temporelle
+                curve_time = self.time_plot.plot(
+                    pen=pg.mkPen(color=colors[i % len(colors)], width=2),
+                    name=f'Sonde {i+1}'
+                )
+                self.time_curves.append(curve_time)
+                
+                # Courbe spectrale
+                curve_spectrum = self.spectrum_plot.plot(
+                    pen=pg.mkPen(color=colors[i % len(colors)], width=2),
+                    name=f'Sonde {i+1}'
+                )
+                self.spectrum_curves.append(curve_spectrum)
+      
+      - add_update_methods:
+          methods: |
+            def update_real_time_plots(self, data_dict: dict):
+                """Mise à jour des graphiques temps réel avec PyQtGraph"""
+                try:
+                    if 'spectra' in data_dict:
+                        spectra = data_dict['spectra']
+                        
+                        for i, (probe_id, spec_data) in enumerate(spectra.items()):
+                            if i < len(self.spectrum_curves):
+                                freqs = spec_data['freqs']
+                                psd = spec_data['psd']
+                                
+                                # Mise à jour spectrale (plus rapide que matplotlib)
+                                self.spectrum_curves[i].setData(freqs, psd)
+                    
+                    if 'time_data' in data_dict:
+                        time_data = data_dict['time_data']
+                        
+                        for i, (probe_id, signal_data) in enumerate(time_data.items()):
+                            if i < len(self.time_curves):
+                                # Afficher seulement les dernières secondes
+                                n_display = min(1000, len(signal_data))
+                                time_axis = np.arange(n_display) / self.sample_rate
+                                
+                                self.time_curves[i].setData(time_axis, signal_data[-n_display:])
+                                
+                except Exception as e:
+                    print(f"Erreur mise à jour graphiques: {e}")
+            
+            def update_status_indicators(self, stats_dict: dict):
+                """Mise à jour des indicateurs de statut"""
+                try:
+                    if 'buffer_stats' in stats_dict:
+                        buffer_stats = stats_dict['buffer_stats']
+                        fill_ratio = buffer_stats.get('fill_ratio', 0) * 100
+                        self.buffer_label.setText(f"Buffer: {fill_ratio:.1f}%")
+                    
+                    if 'latency_ms' in stats_dict:
+                        latency = stats_dict['latency_ms']
+                        self.latency_label.setText(f"Latence: {latency:.1f}ms")
+                        
+                        # Alerte si latence > 200ms
+                        if latency > 200:
+                            self.latency_label.setStyleSheet("color: red; font-weight: bold;")
+                        else:
+                            self.latency_label.setStyleSheet("color: green;")
+                            
+                except Exception as e:
+                    print(f"Erreur mise à jour statut: {e}")
+            
+            def export_data(self):
+                """Export des données avec dialogue de fichier"""
+                try:
+                    from PyQt5.QtWidgets import QFileDialog
+                    
+                    filepath, _ = QFileDialog.getSaveFileName(
+                        self,
+                        "Exporter les données",
+                        f"acquisition_{time.strftime('%Y%m%d_%H%M%S')}.npz",
+                        "Fichiers NumPy (*.npz);;Tous les fichiers (*)"
+                    )
+                    
+                    if filepath and hasattr(self, 'acquisition_controller'):
+                        success = self.acquisition_controller.export_current_data(filepath)
+                        
+                        if success:
+                            QMessageBox.information(self, "Export", f"Données exportées: {filepath}")
+                        else:
+                            QMessageBox.warning(self, "Export", "Échec de l'export")
+                            
+                except Exception as e:
+                    QMessageBox.critical(self, "Erreur", f"Erreur export: {str(e)}")
+
+  # Phase 4: Tests d'intégration
+  - name: "integration_tests"
+    type: "test_suite"
+    target: "tests/integration/test_optimized_integration.py"
+    tests:
+      - name: "test_fft_performance"
+        description: "Vérifier gain performance FFT ≥ 500%"
+        code: |
+          def test_fft_performance():
+              import time
+              import numpy as np
+              from src.hrneowave.core import OptimizedFFTProcessor
+              
+              # Données test
+              n_channels, n_samples = 4, 1024
+              test_data = np.random.randn(n_channels, n_samples).astype(np.float32)
+              
+              # Test FFT optimisé
+              fft_processor = OptimizedFFTProcessor(n_channels, n_samples, 32.0)
+              
+              start_time = time.time()
+              for _ in range(100):  # 100 itérations
+                  result = fft_processor.compute_spectrum(test_data)
+              optimized_time = time.time() - start_time
+              
+              # Test FFT numpy (baseline)
+              start_time = time.time()
+              for _ in range(100):
+                  for channel in test_data:
+                      np.fft.fft(channel)
+              numpy_time = time.time() - start_time
+              
+              # Vérifier gain ≥ 500%
+              speedup = numpy_time / optimized_time
+              assert speedup >= 5.0, f"Gain FFT insuffisant: {speedup:.1f}x < 5.0x"
+      
+      - name: "test_goda_performance"
+        description: "Vérifier gain performance Goda ≥ 1000%"
+        code: |
+          def test_goda_performance():
+              import time
+              from src.hrneowave.core import OptimizedGodaAnalyzer, ProbeGeometry
+              
+              # Configuration test
+              probe_geometry = ProbeGeometry(
+                  positions=[(0, 0), (1, 0), (2, 0), (3, 0)],
+                  water_depth=10.0
+              )
+              goda_analyzer = OptimizedGodaAnalyzer(probe_geometry)
+              
+              # Données test
+              freqs = np.linspace(0.05, 2.0, 512)
+              complex_spectra = [np.random.complex64(512) for _ in range(4)]
+              wave_data = {
+                  'frequencies': freqs,
+                  'complex_spectra': complex_spectra,
+                  'psd': [np.abs(spec)**2 for spec in complex_spectra]
+              }
+              
+              # Test performance
+              start_time = time.time()
+              for _ in range(50):  # 50 itérations
+                  result = goda_analyzer.analyze_waves(wave_data)
+              optimized_time = time.time() - start_time
+              
+              # Vérifier latence ≤ 5ms par analyse
+              avg_latency_ms = (optimized_time / 50) * 1000
+              assert avg_latency_ms <= 5.0, f"Latence Goda trop élevée: {avg_latency_ms:.1f}ms > 5ms"
+      
+      - name: "test_gui_responsiveness"
+        description: "Vérifier réactivité GUI ≤ 16ms"
+        code: |
+          def test_gui_responsiveness(qtbot):
+              import time
+              from gui.acquisition.modern_acquisition_window import AcquisitionSetupWindow
+              
+              # Créer fenêtre test
+              window = AcquisitionSetupWindow()
+              qtbot.addWidget(window)
+              
+              # Simuler données temps réel
+              test_data = {
+                  'spectra': {
+                      'probe_0': {
+                          'freqs': np.linspace(0, 16, 512),
+                          'psd': np.random.rand(512),
+                          'phase': np.random.rand(512)
+                      }
+                  }
+              }
+              
+              # Mesurer temps de mise à jour
+              start_time = time.time()
+              for _ in range(60):  # 60 FPS
+                  window.update_real_time_plots(test_data)
+                  qtbot.wait(1)  # 1ms entre updates
+              total_time = time.time() - start_time
+              
+              # Vérifier ≤ 16ms par frame (60 FPS)
+              avg_frame_time_ms = (total_time / 60) * 1000
+              assert avg_frame_time_ms <= 16.0, f"GUI trop lente: {avg_frame_time_ms:.1f}ms > 16ms"
+
+  # Phase 5: Validation finale
+  - name: "final_validation"
+    type: "validation"
+    checks:
+      - imports_check:
+          description: "Vérifier imports modules optimisés"
+          files:
+            - "gui/processing/optimized_worker.py"
+            - "gui/acquisition/optimized_controller.py"
+          required_imports:
+            - "src.hrneowave.core.OptimizedFFTProcessor"
+            - "src.hrneowave.core.OptimizedGodaAnalyzer"
+            - "src.hrneowave.core.CircularBuffer"
+      
+      - performance_check:
+          description: "Vérifier métriques de performance"
+          requirements:
+            - "FFT speedup ≥ 5x"
+            - "Goda speedup ≥ 10x"
+            - "GUI latency ≤ 16ms"
+            - "Processing latency ≤ 5ms"
+      
+      - coverage_check:
+          description: "Vérifier couverture tests ≥ 88%"
+          command: "pytest --cov=src --cov=gui --cov-report=term-missing"
+          min_coverage: 88
+
+expected_results:
+  - "ProcessingWorker migré vers modules optimisés"
+  - "AcquisitionController utilise CircularBuffer thread-safe"
+  - "GUI modernisée avec PyQtGraph (gain performance graphique)"
+  - "Contrôles Start/Stop/Export fonctionnels"
+  - "Latence traitement ≤ 5ms"
+  - "Réactivité GUI ≤ 16ms"
+  - "Couverture tests ≥ 88%"
+  - "Aucune régression fonctionnelle"

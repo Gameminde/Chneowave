@@ -1,0 +1,68 @@
+{
+  "timestamp": 1752706955.1289692,
+  "date": "2025-07-17 01:02:35",
+  "system_info": {
+    "python_version": "3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)]",
+    "platform": "win32",
+    "cpu_count": 8,
+    "memory_total": 8334729216
+  },
+  "p0_objectives": {
+    "buffer_test": "15 min @ 32 Hz × 8 sondes → 0 overflow, usage ≤ 80%",
+    "signal_performance": "Communication inter-fenêtres fluide",
+    "test_coverage": "Couverture ≥ 90%"
+  },
+  "results": [
+    {
+      "test_name": "P0_Buffer_Test",
+      "duration": 0,
+      "success": false,
+      "metrics": {},
+      "errors": [
+        "Modules buffer non disponibles"
+      ],
+      "timestamp": 1752706954.5452926
+    },
+    {
+      "test_name": "Stress_Test",
+      "duration": 0,
+      "success": false,
+      "metrics": {},
+      "errors": [
+        "Modules buffer non disponibles"
+      ],
+      "timestamp": 1752706954.5452926
+    },
+    {
+      "test_name": "Signal_Performance_Test",
+      "duration": 0.5243163108825684,
+      "success": true,
+      "metrics": {
+        "data_signals_sent": 1000,
+        "data_signals_received": 1000,
+        "error_signals_sent": 100,
+        "error_signals_received": 100,
+        "duration": 0.5243163108825684,
+        "data_signal_rate": 1907.2456439829716,
+        "error_signal_rate": 190.72456439829716,
+        "data_loss_percent": 0.0,
+        "error_loss_percent": 0.0
+      },
+      "errors": [],
+      "timestamp": 1752706955.1279814
+    }
+  ],
+  "coverage": {
+    "coverage_percent": 0,
+    "modules_tested": [],
+    "target_coverage": 90.0,
+    "meets_target": false,
+    "error": "Module coverage non installé"
+  },
+  "summary": {
+    "total_tests": 3,
+    "passed_tests": 1,
+    "failed_tests": 2,
+    "overall_success": false
+  }
+}

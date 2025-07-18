@@ -1,0 +1,22 @@
+{
+  "timestamp": "2025-07-16T10:28:06.077032",
+  "status": "PARTIAL",
+  "issues": [],
+  "summary": {
+    "optimized_files": "5/5",
+    "gui_integration": "3/3",
+    "orphan_files": 1,
+    "duplicate_files": 6,
+    "performance": {
+      "coverage": 83.65139556417832,
+      "fft_speedup": 650.0,
+      "goda_speedup": 1200.0,
+      "latency_ok": true
+    }
+  },
+  "recommendations": [
+    "Nettoyer 1 fichiers orphelins",
+    "Éliminer 6 fichiers dupliqués",
+    "Améliorer la couverture de tests"
+  ]
+}

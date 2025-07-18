@@ -1,0 +1,115 @@
+# mcp_jobs/enhance_v02.yml
+mode: repair            # Strictement "réparation" : aucune génération libre
+ignore_paths:
+  - "venv*/"
+  - "__pycache__/"
+  - "logs/**"
+  - "exports/**"
+
+#–– PARAMÈTRES GLOBAUX ––#
+env:
+  CHNW_MODE: "offline"
+  CHNW_FS: "500"                  # Hz ; l'utilisateur pourra surcharger
+  CHNW_N_PROBES: "16"             # par défaut
+  CHNW_GEOM: "config/probes_geom.json"
+
+tasks:
+
+# 1 ─────────────── Couche d'abstraction matérielle ─────────────── #
+- name: hw_abstraction
+  description: >
+    Crée src/hrneowave/hw/ avec AnalogChannel, DigitalChannel,
+    DAQSession (wrapper nidaqmx/pydaqmx/pyserial). Support 0-10 V,
+    4-20 mA et RS232/RS485. Aucunes dépendances réseau.
+  produce_patch: "__fixes__/patch_hw_abstraction.patch"
+
+# 2 ─────────────── Gestion des triggers matériels ─────────────── #
+- name: trigger_manager
+  depends_on: hw_abstraction
+  description: >
+    Implémente TriggerManager dans hw/trigger.py :
+      • StartTrigger et ReferenceTrigger via NI-DAQmx quand dispo
+      • Fallback software avec horloge monotone
+      • Ajoute timestamp UTC à chaque sample
+  produce_patch: "__fixes__/patch_trigger_manager.patch"
+
+# 3 ─────────────── Export CSV & HDF5 + métadonnées ─────────────── #
+- name: exporter_ext
+  description: >
+    Étend exporter.py :
+      • options --format ascii|csv|hdf5
+      • HDF5 : dataset 'data', attrs {fs, probes, geom_hash, git_sha}
+      • écriture asynchrone (thread Writer)
+  produce_patch: "__fixes__/patch_exporter_ext.patch"
+
+# 4 ─────────────── Calibration avancée ─────────────── #
+- name: calibration_advanced
+  description: >
+    Calibration GUI : stockage JSON horodaté, poly ordre 2 autorisé,
+    rappel automatique après 8 h d'usage cumulé (warning GUI).
+  produce_patch: "__fixes__/patch_calibration_adv.patch"
+
+# 5 ─────────────── Bench « Cas D » 64 voies ─────────────── #
+- name: benchmark_case_d
+  description: >
+    Ajoute Cas D (64 voies, 100 Hz, 600 s) dans
+    __fixes__/bench_results_2025-07-15.json, met à jour
+    benchmark_performance.py pour exécuter A–D, stocker CPU, latence,
+    ΔHs, ΔTp et git_sha.
+  produce_patch: "__fixes__/patch_benchmark_case_d.patch"
+
+# 6 ─────────────── Optim Goda-SVD multi-géométries ─────────────── #
+- name: goda_cache_multi
+  depends_on: benchmark_case_d
+  description: >
+    Dans optimized_goda_analyzer.py :
+      • mise en cache (AᴴA) + décomp. Cholesky par combinaison
+        (fs, n_probes, geom_hash)
+      • bench interne vérifie gain CPU ≥ 30 % Cas D.
+  produce_patch: "__fixes__/patch_goda_cache_multi.patch"
+
+# 7 ─────────────── GUI PyMoDAQ ─────────────── #
+- name: gui_pymodaq
+  description: >
+    Remplace panneau acquisition par DockArea PyMoDAQ :
+      • widget Courbe temps réel, FFT, spectre réflex (4 sondes),
+        bouton snapshot.
+    Aucune modification réseau ; tout reste local.
+  produce_patch: "__fixes__/patch_gui_pymodaq.patch"
+
+# 8 ─────────────── Logs & mode relecture offline ─────────────── #
+- name: logging_offline
+  description: >
+    Ajoute détection dérive capteur (>3σ en 5 min) => WARNING log,
+    mode --simulate <file.hdf5> pour rejouer un essai sans DAQ.
+  produce_patch: "__fixes__/patch_logging_offline.patch"
+
+# 9 ─────────────── Documentation & README ─────────────── #
+- name: docs_update
+  description: >
+    Met à jour README.md :
+      • installation offline,
+      • description formats CSV/HDF5,
+      • variables d'env,
+      • bench A–D.
+  produce_patch: "__fixes__/patch_docs_update.patch"
+
+# 10 ─────────────── CI locale (GitHub Actions offline) ─────────────── #
+- name: ci_local
+  description: >
+    Crée .github/workflows/offline.yml avec matrix {win-latest, ubuntu-latest},
+    job offline : pip install --no-index --find-links local_packages,
+    run tests + benchmarks A–D, coverage ≥90 %.
+  produce_patch: "__fixes__/patch_ci_local.patch"
+
+# 11 ─────────────── Lancement sans réseau ─────────────── #
+- name: launch_local
+  description: >
+    Exécute hrneowave.launcher --config ${CHNW_GEOM} --offline
+    et ouvre GUI ; vérifie qu'aucune connexion sortante n'est tentée
+    (hooks monkeypatch socket.create_connection).
+  run: >
+    python -m hrneowave.launcher
+      --config ${CHNW_GEOM}
+      --offline
+      --log-dir logs/

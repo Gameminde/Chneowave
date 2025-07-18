@@ -1,0 +1,28 @@
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hrneowave"
+version = "0.3.0"
+description = "Logiciel d'acquisition et d'analyse de houle pour laboratoire maritime"
+authors = [{name = "Laboratoire d'Etude Maritime", email = "lem@maritime.fr"}]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20.0",
+    "scipy>=1.7.0",
+    "PyQt5>=5.15.0",
+    "pyqtgraph>=0.12.0",
+    "pyyaml>=5.4.0",
+    "pytest>=6.0.0",
+    "pytest-cov>=2.12.0"
+]
+
+[project.scripts]
+hr-lab-config = "hrneowave.tools.lab_config:main"
+hr-doc-generator = "hrneowave.utils.doc_generator:main"
+hr-config-optimizer = "hrneowave.config.optimization_config:main"
+
+[project.optional-dependencies]
+dev = ["pytest", "pytest-cov", "black", "flake8"]

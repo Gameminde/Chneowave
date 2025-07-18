@@ -1,0 +1,230 @@
+# Configuration de fusion des modules __fixes__ vers structure finale CHNeoWave
+# Objectif: Réorganiser le code en structure propre et installable
+
+mode: repair
+ignore_paths:
+  - "venv*/"
+  - "__pycache__/"
+  - "logs/**"
+  - "exports/**"
+  - "*.pyc"
+  - "*.pyo"
+  - ".pytest_cache/"
+
+tasks:
+
+# 1 ─── Déplacer tout le contenu de __fixes__/ vers src/hrneowave/
+- name: merge_core_modules
+  description: >
+    • Pour chaque fichier *.py* de __fixes__/, calculer la destination :
+        optimized_*        → src/hrneowave/core/
+        circular_buffer.py → src/hrneowave/core/
+        async_acquisition  → src/hrneowave/core/
+        hardware_requirements.py → src/hrneowave/hw/
+        hw_iotech_backend.py    → src/hrneowave/hw/
+        tools/*.py              → src/hrneowave/tools/
+        tests/*.py              → tests/
+    • Copier/écraser si plus récent, puis supprimer l'original.
+  produce_patch: "__fixes__/patch_merge_core.patch"
+  mapping:
+    # Modules d'optimisation vers core/
+    "__fixes__/optimized_*.py": "src/hrneowave/core/"
+    "__fixes__/circular_buffer.py": "src/hrneowave/core/"
+    "__fixes__/async_acquisition.py": "src/hrneowave/core/"
+    "__fixes__/benchmark_performance.py": "src/hrneowave/core/"
+    "__fixes__/quality_metrics.py": "src/hrneowave/core/"
+    "__fixes__/system_monitor.py": "src/hrneowave/core/"
+    
+    # Modules hardware vers hw/
+    "__fixes__/hardware_requirements.py": "src/hrneowave/hw/"
+    "__fixes__/hw_iotech_backend.py": "src/hrneowave/hw/"
+    
+    # Outils CLI vers tools/
+    "__fixes__/complete_guide.py": "src/hrneowave/tools/"
+    "__fixes__/lab_configurator.py": "src/hrneowave/tools/"
+    "__fixes__/quick_start_guide.py": "src/hrneowave/tools/"
+    "__fixes__/final_validation.py": "src/hrneowave/tools/"
+    "__fixes__/automated_deployment.py": "src/hrneowave/tools/"
+    "__fixes__/update_manager.py": "src/hrneowave/tools/"
+    "__fixes__/auto_configurator.py": "src/hrneowave/tools/"
+    "__fixes__/deployment_manager.py": "src/hrneowave/tools/"
+    "__fixes__/migration_assistant.py": "src/hrneowave/tools/"
+    
+    # Tests vers tests/
+    "__fixes__/test_*.py": "tests/"
+    "__fixes__/automated_testing.py": "tests/"
+    "__fixes__/validate_optimizations.py": "tests/"
+    
+    # Configuration et documentation
+    "__fixes__/optimization_config.py": "src/hrneowave/config/"
+    "__fixes__/doc_generator.py": "src/hrneowave/utils/"
+    "__fixes__/continuous_improvement.py": "src/hrneowave/utils/"
+    "__fixes__/evolution_plan.py": "src/hrneowave/utils/"
+
+# 2 ─── Mettre à jour les imports internes
+- name: fix_internal_imports
+  description: >
+    Parcourt src/hrneowave/**.py, remplace
+      "from __fixes__."  ->  "from hrneowave."
+      "import __fixes__." -> "import hrneowave."
+      "from . import"     -> imports relatifs corrects
+  produce_patch: "__fixes__/patch_fix_imports.patch"
+  replacements:
+    - pattern: 'from __fixes__\.(\w+)'
+      replacement: 'from hrneowave.core.\1'
+      files: 'src/hrneowave/**/*.py'
+    - pattern: 'import __fixes__\.(\w+)'
+      replacement: 'import hrneowave.core.\1'
+      files: 'src/hrneowave/**/*.py'
+    - pattern: 'from __fixes__\.hw\.(\w+)'
+      replacement: 'from hrneowave.hw.\1'
+      files: 'src/hrneowave/**/*.py'
+    - pattern: 'from __fixes__\.tools\.(\w+)'
+      replacement: 'from hrneowave.tools.\1'
+      files: 'src/hrneowave/**/*.py'
+
+# 3 ─── Créer les fichiers __init__.py manquants
+- name: create_init_files
+  description: >
+    Créer les fichiers __init__.py pour rendre les modules importables
+  files_to_create:
+    "src/hrneowave/__init__.py": |
+      """CHNeoWave - Logiciel d'acquisition houle laboratoire maritime"""
+      __version__ = "0.3.0"
+      
+      from .core import *
+      from .hw import *
+      from .tools import *
+    
+    "src/hrneowave/core/__init__.py": |
+      """Modules d'optimisation et traitement signal CHNeoWave"""
+      from .optimized_goda_analyzer import *
+      from .optimized_fft_processor import *
+      from .circular_buffer import *
+      from .async_acquisition import *
+    
+    "src/hrneowave/hw/__init__.py": |
+      """Interfaces hardware CHNeoWave"""
+      from .iotech_backend import *
+      from .hardware_requirements import *
+    
+    "src/hrneowave/tools/__init__.py": |
+      """Outils CLI CHNeoWave"""
+      # Les outils CLI sont accessibles via les entry points
+    
+    "src/hrneowave/config/__init__.py": |
+      """Configuration CHNeoWave"""
+      from .optimization_config import *
+    
+    "src/hrneowave/utils/__init__.py": |
+      """Utilitaires CHNeoWave"""
+      from .doc_generator import *
+      from .continuous_improvement import *
+
+# 4 ─── Nettoyer le dossier __fixes__
+- name: cleanup_fixes_dir
+  description: >
+    • Laisse seulement un README.md expliquant l'historique.
+    • Ajoute "__fixes__/" dans .gitignore.
+  produce_patch: "__fixes__/patch_cleanup_fixes_dir.patch"
+  actions:
+    - create_file: "__fixes__/README.md"
+      content: |
+        # Historique __fixes__
+        
+        Ce dossier contenait les modules de développement et d'optimisation de CHNeoWave.
+        
+        ## Migration v0.3.0
+        
+        Tous les modules ont été déplacés vers la structure finale :
+        
+        - `optimized_*.py` → `src/hrneowave/core/`
+        - `hardware_*.py` → `src/hrneowave/hw/`
+        - `*_guide.py`, `*_configurator.py` → `src/hrneowave/tools/`
+        - `test_*.py` → `tests/`
+        
+        ## Utilisation
+        
+        ```bash
+        # Installation
+        pip install -e .
+        
+        # Outils CLI
+        hr-complete-guide
+        hr-lab-config
+        hr-final-validate
+        ```
+        
+        **Note**: Ce dossier est maintenant obsolète et sera supprimé dans les versions futures.
+    
+    - append_to_file: ".gitignore"
+      content: |
+        
+        # Dossier de développement obsolète
+        __fixes__/
+        !__fixes__/README.md
+
+# 5 ─── Mettre à jour pyproject.toml
+- name: update_pyproject_toml
+  description: >
+    Mettre à jour les entry points CLI pour pointer vers les nouveaux modules
+  produce_patch: "__fixes__/patch_update_pyproject.patch"
+  file: "pyproject.toml"
+  updates:
+    project.scripts:
+      hr-complete-guide: "hrneowave.tools.complete_guide:main"
+      hr-lab-config: "hrneowave.tools.lab_configurator:main"
+      hr-quick-start: "hrneowave.tools.quick_start_guide:main"
+      hr-final-validate: "hrneowave.tools.final_validation:main"
+      hr-deploy: "hrneowave.tools.automated_deployment:main"
+      hr-update-manager: "hrneowave.tools.update_manager:main"
+      hr-auto-config: "hrneowave.tools.auto_configurator:main"
+      hr-migrate: "hrneowave.tools.migration_assistant:main"
+
+# 6 ─── Réexécuter tests & couverture
+- name: run_tests_after_merge
+  description: >
+    Installer le package et exécuter les tests pour valider la migration
+  run: |
+    python -m pip install -e .
+    pytest -q --cov=hrneowave --cov-fail-under=90
+    python -c "import hrneowave; print(f'CHNeoWave v{hrneowave.__version__} installé avec succès')"
+
+# 7 ─── Validation finale
+- name: validate_structure
+  description: >
+    Vérifier que la nouvelle structure est correcte
+  checks:
+    - file_exists: "src/hrneowave/__init__.py"
+    - file_exists: "src/hrneowave/core/__init__.py"
+    - file_exists: "src/hrneowave/hw/__init__.py"
+    - file_exists: "src/hrneowave/tools/__init__.py"
+    - command_succeeds: "hr-complete-guide --help"
+    - command_succeeds: "hr-lab-config --help"
+    - command_succeeds: "hr-final-validate --help"
+    - python_import: "hrneowave.core.optimized_goda_analyzer"
+    - python_import: "hrneowave.hw.iotech_backend"
+
+# Configuration post-fusion
+post_merge:
+  structure_finale: |
+    src/
+     └ hrneowave/
+         core/          # optimized_*.py, circular_buffer.py, async_acquisition.py
+         hw/            # iotech_backend.py, hardware_requirements.py
+         tools/         # lab_configurator.py, complete_guide.py, …
+         config/        # optimization_config.py
+         utils/         # doc_generator.py, continuous_improvement.py
+    tests/             # test_*.py, automated_testing.py
+    
+  notes: |
+    • Entry-points CLI déjà déclarés dans pyproject.toml pointent
+      maintenant vers des modules installés, donc PyInstaller
+      les détectera automatiquement.
+    
+    • Exécutable final possible avec :
+      pyinstaller -y --name CHNeoWave --onefile \
+                  --icon assets/logo.ico --add-data "daqx.dll;." \
+                  -p ./src hr-launch
+    
+    • Structure "clean" prête pour distribution et déploiement laboratoire.
