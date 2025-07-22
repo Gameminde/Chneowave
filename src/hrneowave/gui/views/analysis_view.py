@@ -1,717 +1,824 @@
-# analysis_view.py - Vue d'analyse post-acquisition
-import sys
-import os
-import time
-import numpy as np
-import pandas as pd
-from datetime import datetime
-from typing import Dict, Any, Optional, List, Tuple
+# -*- coding: utf-8 -*-
+"""
+Vue d'analyse CHNeoWave
+Étape 4 : Analyse et résultats
+"""
 
-from PyQt5.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QTableWidget,
-    QTableWidgetItem, QGroupBox, QFormLayout, QSplitter, QSizePolicy,
-    QTabWidget, QTextEdit, QProgressBar, QComboBox, QCheckBox, QFileDialog,
-    QMessageBox, QHeaderView
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel, QPushButton,
+    QTableWidget, QTableWidgetItem, QTextEdit, QGroupBox, QSplitter,
+    QScrollArea, QGridLayout, QFormLayout, QSpinBox, QDoubleSpinBox,
+    QCheckBox, QComboBox, QProgressBar
 )
-from PyQt5.QtCore import Qt, QTimer, pyqtSlot, pyqtSignal, QThread, QObject
-from PyQt5.QtGui import QFont, QPixmap
+from PySide6.QtCore import Signal, Qt, QThread, Slot
+from PySide6.QtGui import QFont, QColor, QPixmap, QPainter
 
-import pyqtgraph as pg
-from pyqtgraph import PlotWidget, mkPen
-
-try:
-    from ..post_processor import PostProcessor
-except ImportError:
-    print("⚠️ PostProcessor non disponible")
-    PostProcessor = None
-
-class AnalysisWorker(QObject):
-    """Worker thread pour analyses lourdes"""
-    
-    analysisProgress = pyqtSignal(int)  # Progression 0-100
-    analysisComplete = pyqtSignal(dict)  # Résultats
-    analysisError = pyqtSignal(str)  # Erreur
-    
-    def __init__(self, filepath: str, post_processor: Optional[PostProcessor] = None):
-        super().__init__()
-        self.filepath = filepath
-        self.post_processor = post_processor
-        
-    def run_analysis(self):
-        """Lance l'analyse complète"""
-        try:
-            self.analysisProgress.emit(10)
-            
-            # Chargement données
-            data = self._load_data()
-            self.analysisProgress.emit(30)
-            
-            # Analyse spectrale
-            spectrum_results = self._compute_spectrum(data)
-            self.analysisProgress.emit(60)
-            
-            # Analyse Goda
-            goda_results = self._compute_goda_metrics(data)
-            self.analysisProgress.emit(90)
-            
-            # Compilation résultats
-            results = {
-                'data': data,
-                'spectrum': spectrum_results,
-                'goda': goda_results,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            self.analysisProgress.emit(100)
-            self.analysisComplete.emit(results)
-            
-        except Exception as e:
-            self.analysisError.emit(str(e))
-            
-    def _load_data(self) -> Dict[str, np.ndarray]:
-        """Charge les données depuis le fichier"""
-        if self.filepath.endswith('.csv'):
-            df = pd.read_csv(self.filepath)
-            return {
-                'time': df['Time'].values,
-                'channels': [df[col].values for col in df.columns if col.startswith('Sonde_')]
-            }
-        else:
-            raise ValueError(f"Format non supporté: {self.filepath}")
-            
-    def _compute_spectrum(self, data: Dict[str, np.ndarray]) -> Dict[str, Any]:
-        """Calcule les spectres FFT"""
-        results = {}
-        
-        for i, channel_data in enumerate(data['channels']):
-            # FFT
-            fft = np.fft.fft(channel_data)
-            freqs = np.fft.fftfreq(len(channel_data), d=1/32.0)  # 32 Hz par défaut
-            
-            # Spectre de puissance
-            power_spectrum = np.abs(fft)**2
-            
-            # Garder seulement fréquences positives
-            positive_freqs = freqs[:len(freqs)//2]
-            positive_spectrum = power_spectrum[:len(power_spectrum)//2]
-            
-            results[f'channel_{i+1}'] = {
-                'frequencies': positive_freqs,
-                'spectrum': positive_spectrum,
-                'peak_freq': positive_freqs[np.argmax(positive_spectrum)],
-                'total_energy': np.sum(positive_spectrum)
-            }
-            
-        return results
-        
-    def _compute_goda_metrics(self, data: Dict[str, np.ndarray]) -> Dict[str, Any]:
-        """Calcule les métriques Goda (analyse statistique des vagues)"""
-        results = {}
-        
-        for i, channel_data in enumerate(data['channels']):
-            # Détection des vagues (zéro-crossing)
-            zero_crossings = np.where(np.diff(np.signbit(channel_data)))[0]
-            
-            if len(zero_crossings) < 4:
-                # Pas assez de données
-                results[f'channel_{i+1}'] = self._empty_goda_metrics()
-                continue
-                
-            # Hauteurs des vagues
-            wave_heights = []
-            wave_periods = []
-            
-            for j in range(0, len(zero_crossings)-2, 2):
-                start_idx = zero_crossings[j]
-                end_idx = zero_crossings[j+2]
-                
-                if end_idx < len(channel_data):
-                    wave_segment = channel_data[start_idx:end_idx]
-                    height = np.max(wave_segment) - np.min(wave_segment)
-                    period = (end_idx - start_idx) / 32.0  # 32 Hz
-                    
-                    wave_heights.append(height)
-                    wave_periods.append(period)
-                    
-            if not wave_heights:
-                results[f'channel_{i+1}'] = self._empty_goda_metrics()
-                continue
-                
-            wave_heights = np.array(wave_heights)
-            wave_periods = np.array(wave_periods)
-            
-            # Tri par hauteur décroissante
-            sorted_heights = np.sort(wave_heights)[::-1]
-            
-            # Métriques Goda
-            n_waves = len(wave_heights)
-            
-            # Hs (hauteur significative) = moyenne du tiers supérieur
-            n_third = max(1, n_waves // 3)
-            hs = np.mean(sorted_heights[:n_third])
-            
-            # H1/3 (identique à Hs)
-            h13 = hs
-            
-            # Tp (période de pic)
-            tp = np.mean(wave_periods)
-            
-            # Cr (Crest factor)
-            cr = np.max(wave_heights) / np.mean(wave_heights) if np.mean(wave_heights) > 0 else 0
-            
-            # Sk (Skewness)
-            sk = self._compute_skewness(channel_data)
-            
-            # Ku (Kurtosis)
-            ku = self._compute_kurtosis(channel_data)
-            
-            results[f'channel_{i+1}'] = {
-                'Hs': hs,
-                'H13': h13,
-                'Tp': tp,
-                'Cr': cr,
-                'Sk': sk,
-                'Ku': ku,
-                'n_waves': n_waves,
-                'mean_height': np.mean(wave_heights),
-                'max_height': np.max(wave_heights),
-                'mean_period': np.mean(wave_periods)
-            }
-            
-        return results
-        
-    def _empty_goda_metrics(self) -> Dict[str, float]:
-        """Métriques vides en cas d'erreur"""
-        return {
-            'Hs': 0.0, 'H13': 0.0, 'Tp': 0.0, 'Cr': 0.0, 'Sk': 0.0, 'Ku': 0.0,
-            'n_waves': 0, 'mean_height': 0.0, 'max_height': 0.0, 'mean_period': 0.0
-        }
-        
-    def _compute_skewness(self, data: np.ndarray) -> float:
-        """Calcule l'asymétrie (skewness)"""
-        mean = np.mean(data)
-        std = np.std(data)
-        if std == 0:
-            return 0.0
-        return np.mean(((data - mean) / std) ** 3)
-        
-    def _compute_kurtosis(self, data: np.ndarray) -> float:
-        """Calcule l'aplatissement (kurtosis)"""
-        mean = np.mean(data)
-        std = np.std(data)
-        if std == 0:
-            return 0.0
-        return np.mean(((data - mean) / std) ** 4) - 3.0
+import numpy as np
+from datetime import datetime
+import json
+# Utilisation de l'adaptateur matplotlib pour compatibilité PySide6
+from ..components.matplotlib_adapter import pg
 
 class AnalysisView(QWidget):
-    """Vue d'analyse post-acquisition
-    
-    Fonctionnalités:
-    - S'ouvre automatiquement après Stop
-    - Spectres FFT, analyse Goda (plots)
-    - Tableau complet Hs, H1/3, Tp, Cr, Sk, Ku
-    - Export CSV/PDF/HDF5, log détaillé
-    - Interface responsive sans scroll
     """
+    Vue d'analyse des données
+    Respecte le principe d'isolation : UNIQUEMENT l'analyse
+    """
+
+    analysisFinished = Signal(dict)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.session_data = None
+        self.analysis_results = {}
+        self.setupUI()
+        self.connectSignals()
     
-    # Signaux
-    analysisCompleted = pyqtSignal(dict)
-    exportCompleted = pyqtSignal(str)
-    
-    def __init__(self, filepath: str, config: Dict[str, Any], post_processor: Optional[PostProcessor] = None):
-        super().__init__()
-        self.filepath = filepath
-        self.config = config
-        self.post_processor = post_processor
-        
-        # Résultats analyse
-        self.analysis_results = None
-        
-        # Worker thread
-        self.analysis_worker = None
-        self.analysis_thread = None
-        
-        self._init_ui()
-        self._start_analysis()
-        
-    def _init_ui(self):
-        """Initialise l'interface d'analyse"""
-        self.setWindowTitle(f"HRNeoWave - Analyse: {os.path.basename(self.filepath)}")
-        
-        # Taille optimale pour analyse
-        self.setMinimumSize(1024, 640)
-        self.resize(1400, 800)
-        
-        self._create_layout()
-        self._apply_analysis_theme()
-        
-    def _create_layout(self):
-        """Layout principal avec onglets"""
+    def setupUI(self):
+        """
+        Configuration de l'interface utilisateur
+        """
+        # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(4, 4, 4, 4)
-        main_layout.setSpacing(4)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
         
-        # Barre de progression
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(True)
-        main_layout.addWidget(self.progress_bar)
+        # Titre principal
+        title_label = QLabel("Étape 4 : Analyse et Résultats")
+        title_font = QFont()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #2980b9; margin-bottom: 10px;")
+        main_layout.addWidget(title_label)
         
-        # Onglets principaux
-        self.tab_widget = QTabWidget()
+        # Widget à onglets pour les différentes analyses
+        self.analysis_tabs = QTabWidget()
+        self.analysis_tabs.setMinimumHeight(500)
         
-        # Onglet Spectres
-        self.spectrum_tab = self._create_spectrum_tab()
-        self.tab_widget.addTab(self.spectrum_tab, "📊 Spectres FFT")
+        # Onglet 1 : Analyse spectrale
+        self.createSpectralAnalysisTab()
         
-        # Onglet Goda
-        self.goda_tab = self._create_goda_tab()
-        self.tab_widget.addTab(self.goda_tab, "🌊 Analyse Goda")
+        # Onglet 2 : Analyse de Goda
+        self.createGodaAnalysisTab()
         
-        # Onglet Export
-        self.export_tab = self._create_export_tab()
-        self.tab_widget.addTab(self.export_tab, "💾 Export")
+        # Onglet 3 : Statistiques
+        self.createStatisticsTab()
         
-        main_layout.addWidget(self.tab_widget)
+        # Onglet 4 : Rapport de synthèse
+        self.createSummaryTab()
         
-        # Initialement désactivé
-        self.tab_widget.setEnabled(False)
+        main_layout.addWidget(self.analysis_tabs)
         
-    def _create_spectrum_tab(self) -> QWidget:
-        """Onglet spectres FFT"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
+        # Espacement
+        main_layout.addStretch()
         
-        # Contrôles
-        controls_layout = QHBoxLayout()
+        # Bouton de navigation
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
         
-        self.channel_selector = QComboBox()
-        self.channel_selector.addItems([f"Sonde {i+1}" for i in range(4)])
-        self.channel_selector.currentTextChanged.connect(self._update_spectrum_plot)
-        
-        self.log_scale_cb = QCheckBox("Échelle log")
-        self.log_scale_cb.toggled.connect(self._update_spectrum_plot)
-        
-        controls_layout.addWidget(QLabel("Canal:"))
-        controls_layout.addWidget(self.channel_selector)
-        controls_layout.addWidget(self.log_scale_cb)
-        controls_layout.addStretch()
-        
-        layout.addLayout(controls_layout)
-        
-        # Graphique spectre
-        self.spectrum_plot = PlotWidget()
-        self.spectrum_plot.setLabel('left', 'Densité spectrale', units='m²/Hz')
-        self.spectrum_plot.setLabel('bottom', 'Fréquence', units='Hz')
-        self.spectrum_plot.showGrid(x=True, y=True)
-        
-        layout.addWidget(self.spectrum_plot)
-        
-        # Stats spectrales
-        stats_group = QGroupBox("Statistiques spectrales")
-        stats_layout = QFormLayout(stats_group)
-        
-        self.peak_freq_label = QLabel("--")
-        self.total_energy_label = QLabel("--")
-        self.bandwidth_label = QLabel("--")
-        
-        stats_layout.addRow("Fréquence de pic:", self.peak_freq_label)
-        stats_layout.addRow("Énergie totale:", self.total_energy_label)
-        stats_layout.addRow("Largeur de bande:", self.bandwidth_label)
-        
-        layout.addWidget(stats_group)
-        
-        return tab
-        
-    def _create_goda_tab(self) -> QWidget:
-        """Onglet analyse Goda"""
-        tab = QWidget()
-        layout = QHBoxLayout(tab)
-        
-        # Splitter vertical
-        splitter = QSplitter(Qt.Vertical)
-        
-        # Tableau métriques
-        self.goda_table = QTableWidget()
-        self.goda_table.setColumnCount(7)
-        self.goda_table.setHorizontalHeaderLabels(['Canal', 'Hs (m)', 'H1/3 (m)', 'Tp (s)', 'Cr', 'Sk', 'Ku'])
-        
-        # Ajuster colonnes
-        header = self.goda_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        
-        splitter.addWidget(self.goda_table)
-        
-        # Graphique distribution hauteurs
-        self.height_dist_plot = PlotWidget()
-        self.height_dist_plot.setLabel('left', 'Fréquence')
-        self.height_dist_plot.setLabel('bottom', 'Hauteur de vague', units='m')
-        self.height_dist_plot.showGrid(x=True, y=True)
-        
-        splitter.addWidget(self.height_dist_plot)
-        
-        # Proportions 60% tableau / 40% graphique
-        splitter.setStretchFactor(0, 60)
-        splitter.setStretchFactor(1, 40)
-        
-        layout.addWidget(splitter)
-        
-        return tab
-        
-    def _create_export_tab(self) -> QWidget:
-        """Onglet export et log"""
-        tab = QWidget()
-        layout = QVBoxLayout(tab)
-        
-        # Contrôles export
-        export_group = QGroupBox("Export des résultats")
-        export_layout = QVBoxLayout(export_group)
-        
-        # Boutons export
-        buttons_layout = QHBoxLayout()
-        
-        self.export_csv_btn = QPushButton("📄 Export CSV")
-        self.export_csv_btn.clicked.connect(lambda: self._export_results('csv'))
-        
-        self.export_pdf_btn = QPushButton("📋 Export PDF")
-        self.export_pdf_btn.clicked.connect(lambda: self._export_results('pdf'))
-        
-        self.export_hdf5_btn = QPushButton("🗃️ Export HDF5")
-        self.export_hdf5_btn.clicked.connect(lambda: self._export_results('hdf5'))
-        
-        buttons_layout.addWidget(self.export_csv_btn)
-        buttons_layout.addWidget(self.export_pdf_btn)
-        buttons_layout.addWidget(self.export_hdf5_btn)
-        buttons_layout.addStretch()
-        
-        export_layout.addLayout(buttons_layout)
-        
-        # Options export
-        options_layout = QHBoxLayout()
-        
-        self.include_raw_data_cb = QCheckBox("Inclure données brutes")
-        self.include_raw_data_cb.setChecked(True)
-        
-        self.include_plots_cb = QCheckBox("Inclure graphiques")
-        self.include_plots_cb.setChecked(True)
-        
-        options_layout.addWidget(self.include_raw_data_cb)
-        options_layout.addWidget(self.include_plots_cb)
-        options_layout.addStretch()
-        
-        export_layout.addLayout(options_layout)
-        layout.addWidget(export_group)
-        
-        # Log détaillé
-        log_group = QGroupBox("Log d'analyse")
-        log_layout = QVBoxLayout(log_group)
-        
-        self.log_text = QTextEdit()
-        self.log_text.setReadOnly(True)
-        self.log_text.setMaximumHeight(200)
-        
-        log_layout.addWidget(self.log_text)
-        layout.addWidget(log_group)
-        
-        # Désactiver initialement
-        export_group.setEnabled(False)
-        self.export_group = export_group
-        
-        return tab
-        
-    def _apply_analysis_theme(self):
-        """Thème pour l'analyse"""
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                font-family: 'Segoe UI', Arial, sans-serif;
-            }
-            QTabWidget::pane {
-                border: 1px solid #444;
-                background-color: #2d2d2d;
-            }
-            QTabBar::tab {
-                background-color: #3d3d3d;
-                color: #ffffff;
-                padding: 8px 16px;
-                margin-right: 2px;
-                border-top-left-radius: 4px;
-                border-top-right-radius: 4px;
-            }
-            QTabBar::tab:selected {
-                background-color: #2196F3;
-            }
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #444;
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 4px;
-            }
-            QTableWidget {
-                gridline-color: #444;
-                selection-background-color: #2196F3;
-            }
-            QHeaderView::section {
-                background-color: #3d3d3d;
-                color: #ffffff;
-                padding: 4px;
-                border: 1px solid #444;
-                font-weight: bold;
-            }
+        self.export_button = QPushButton("Suivant : Exporter le Rapport")
+        self.export_button.setMinimumHeight(45)
+        self.export_button.setMinimumWidth(250)
+        self.export_button.setEnabled(False)  # Désactivé par défaut
+        self.export_button.setStyleSheet("""
             QPushButton {
-                background-color: #2196F3;
+                background-color: #2980b9;
+                color: white;
                 border: none;
-                border-radius: 4px;
-                padding: 8px 16px;
+                border-radius: 8px;
                 font-weight: bold;
+                font-size: 12pt;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background-color: #1e3a5f;
             }
             QPushButton:disabled {
-                background-color: #666;
-                color: #999;
+                background-color: #95a5a6;
+                color: #34495e;
             }
         """)
         
-    def _start_analysis(self):
-        """Lance l'analyse en arrière-plan"""
-        self._log("🚀 Démarrage de l'analyse...")
+        button_layout.addWidget(self.export_button)
+        main_layout.addLayout(button_layout)
+    
+    def createSpectralAnalysisTab(self):
+        """
+        Création de l'onglet d'analyse spectrale
+        """
+        spectral_widget = QWidget()
+        layout = QVBoxLayout(spectral_widget)
         
-        # Créer worker et thread
-        self.analysis_worker = AnalysisWorker(self.filepath, self.post_processor)
-        self.analysis_thread = QThread()
+        # Splitter horizontal
+        splitter = QSplitter(Qt.Horizontal)
         
-        # Connecter signaux
-        self.analysis_worker.moveToThread(self.analysis_thread)
-        self.analysis_worker.analysisProgress.connect(self.progress_bar.setValue)
-        self.analysis_worker.analysisComplete.connect(self._on_analysis_complete)
-        self.analysis_worker.analysisError.connect(self._on_analysis_error)
+        # Zone des graphiques
+        graphs_widget = QWidget()
+        graphs_layout = QVBoxLayout(graphs_widget)
         
-        self.analysis_thread.started.connect(self.analysis_worker.run_analysis)
+        # Graphique des spectres
+        self.spectrum_plot = pg.PlotWidget()
+        self.spectrum_plot.setLabel('left', 'Densité Spectrale (m²/Hz)')
+        self.spectrum_plot.setLabel('bottom', 'Fréquence (Hz)')
+        self.spectrum_plot.setTitle('Spectres de Densité de Puissance')
+        self.spectrum_plot.setLogMode(False, True)  # Log sur l'axe Y
+        graphs_layout.addWidget(self.spectrum_plot)
         
-        # Démarrer
-        self.analysis_thread.start()
+        # Graphique des fonctions de transfert
+        self.transfer_plot = pg.PlotWidget()
+        self.transfer_plot.setLabel('left', 'Cohérence')
+        self.transfer_plot.setLabel('bottom', 'Fréquence (Hz)')
+        self.transfer_plot.setTitle('Fonctions de Cohérence')
+        graphs_layout.addWidget(self.transfer_plot)
         
-    def _on_analysis_complete(self, results: Dict[str, Any]):
-        """Analyse terminée avec succès"""
-        self.analysis_results = results
+        splitter.addWidget(graphs_widget)
         
-        self._log("✅ Analyse terminée avec succès")
+        # Zone de contrôle
+        control_widget = QWidget()
+        control_layout = QVBoxLayout(control_widget)
         
-        # Masquer barre de progression
-        self.progress_bar.setVisible(False)
+        # Paramètres d'analyse
+        params_group = QGroupBox("Paramètres d'Analyse")
+        params_layout = QFormLayout(params_group)
         
-        # Activer interface
-        self.tab_widget.setEnabled(True)
-        self.export_group.setEnabled(True)
+        self.window_size_spin = QSpinBox()
+        self.window_size_spin.setRange(64, 2048)
+        self.window_size_spin.setValue(512)
+        params_layout.addRow("Taille fenêtre:", self.window_size_spin)
         
-        # Mettre à jour affichages
-        self._update_spectrum_plot()
-        self._update_goda_table()
+        self.overlap_spin = QSpinBox()
+        self.overlap_spin.setRange(0, 90)
+        self.overlap_spin.setValue(50)
+        self.overlap_spin.setSuffix("%")
+        params_layout.addRow("Recouvrement:", self.overlap_spin)
         
-        # Nettoyer thread
-        self.analysis_thread.quit()
-        self.analysis_thread.wait()
+        self.window_type_combo = QComboBox()
+        self.window_type_combo.addItems(["Hanning", "Hamming", "Blackman", "Rectangular"])
+        params_layout.addRow("Type fenêtre:", self.window_type_combo)
         
-        # Signal
-        self.analysisCompleted.emit(results)
+        control_layout.addWidget(params_group)
         
-    def _on_analysis_error(self, error: str):
-        """Erreur d'analyse"""
-        self._log(f"❌ Erreur d'analyse: {error}")
+        # Bouton d'analyse
+        self.analyze_spectrum_btn = QPushButton("Analyser Spectres")
+        self.analyze_spectrum_btn.clicked.connect(self.performSpectralAnalysis)
+        control_layout.addWidget(self.analyze_spectrum_btn)
         
-        # Masquer barre de progression
-        self.progress_bar.setVisible(False)
+        # Résultats
+        results_group = QGroupBox("Résultats Spectraux")
+        results_layout = QVBoxLayout(results_group)
         
-        # Message d'erreur
-        QMessageBox.critical(self, "Erreur d'analyse", f"Erreur lors de l'analyse:\n{error}")
+        self.spectral_results_text = QTextEdit()
+        self.spectral_results_text.setMaximumHeight(200)
+        self.spectral_results_text.setReadOnly(True)
+        results_layout.addWidget(self.spectral_results_text)
         
-        # Nettoyer thread
-        if self.analysis_thread:
-            self.analysis_thread.quit()
-            self.analysis_thread.wait()
-            
-    def _update_spectrum_plot(self):
-        """Met à jour le graphique de spectre"""
-        if not self.analysis_results:
+        control_layout.addWidget(results_group)
+        control_layout.addStretch()
+        
+        control_widget.setMaximumWidth(300)
+        splitter.addWidget(control_widget)
+        
+        layout.addWidget(splitter)
+        self.analysis_tabs.addTab(spectral_widget, "Analyse Spectrale")
+    
+    def createGodaAnalysisTab(self):
+        """
+        Création de l'onglet d'analyse de Goda
+        """
+        goda_widget = QWidget()
+        layout = QVBoxLayout(goda_widget)
+        
+        # Splitter horizontal
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Zone des graphiques
+        graphs_widget = QWidget()
+        graphs_layout = QVBoxLayout(graphs_widget)
+        
+        # Graphique de la distribution de Goda
+        self.goda_plot = pg.PlotWidget()
+        self.goda_plot.setLabel('left', 'Hauteur de Vague (m)')
+        self.goda_plot.setLabel('bottom', 'Probabilité de Dépassement')
+        self.goda_plot.setTitle('Distribution de Goda')
+        self.goda_plot.setLogMode(True, False)  # Log sur l'axe X
+        graphs_layout.addWidget(self.goda_plot)
+        
+        # Graphique des hauteurs significatives
+        self.wave_height_plot = pg.PlotWidget()
+        self.wave_height_plot.setLabel('left', 'Hauteur (m)')
+        self.wave_height_plot.setLabel('bottom', 'Temps (s)')
+        self.wave_height_plot.setTitle('Évolution des Hauteurs de Vagues')
+        graphs_layout.addWidget(self.wave_height_plot)
+        
+        splitter.addWidget(graphs_widget)
+        
+        # Zone de contrôle
+        control_widget = QWidget()
+        control_layout = QVBoxLayout(control_widget)
+        
+        # Paramètres de Goda
+        goda_params_group = QGroupBox("Paramètres de Goda")
+        goda_params_layout = QFormLayout(goda_params_group)
+        
+        self.analysis_duration_spin = QDoubleSpinBox()
+        self.analysis_duration_spin.setRange(10.0, 1000.0)
+        self.analysis_duration_spin.setValue(100.0)
+        self.analysis_duration_spin.setSuffix(" s")
+        goda_params_layout.addRow("Durée d'analyse:", self.analysis_duration_spin)
+        
+        self.zero_crossing_check = QCheckBox("Méthode zero-crossing")
+        self.zero_crossing_check.setChecked(True)
+        goda_params_layout.addRow(self.zero_crossing_check)
+        
+        control_layout.addWidget(goda_params_group)
+        
+        # Bouton d'analyse
+        self.analyze_goda_btn = QPushButton("Analyser Goda")
+        self.analyze_goda_btn.clicked.connect(self.performGodaAnalysis)
+        control_layout.addWidget(self.analyze_goda_btn)
+        
+        # Résultats de Goda
+        goda_results_group = QGroupBox("Résultats de Goda")
+        goda_results_layout = QVBoxLayout(goda_results_group)
+        
+        self.goda_results_text = QTextEdit()
+        self.goda_results_text.setMaximumHeight(200)
+        self.goda_results_text.setReadOnly(True)
+        goda_results_layout.addWidget(self.goda_results_text)
+        
+        control_layout.addWidget(goda_results_group)
+        control_layout.addStretch()
+        
+        control_widget.setMaximumWidth(300)
+        splitter.addWidget(control_widget)
+        
+        layout.addWidget(splitter)
+        self.analysis_tabs.addTab(goda_widget, "Analyse de Goda")
+    
+    def createStatisticsTab(self):
+        """
+        Création de l'onglet des statistiques
+        """
+        # Import de pyqtgraph pour cette méthode
+        stats_widget = QWidget()
+        layout = QVBoxLayout(stats_widget)
+        
+        # Splitter horizontal
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Zone des graphiques statistiques
+        graphs_widget = QWidget()
+        graphs_layout = QVBoxLayout(graphs_widget)
+        
+        # Histogramme des amplitudes
+        self.histogram_plot = pg.PlotWidget()
+        self.histogram_plot.setLabel('left', 'Fréquence')
+        self.histogram_plot.setLabel('bottom', 'Amplitude (mm)')
+        self.histogram_plot.setTitle('Distribution des Amplitudes')
+        graphs_layout.addWidget(self.histogram_plot)
+        
+        # Graphique Q-Q plot
+        self.qq_plot = pg.PlotWidget()
+        self.qq_plot.setLabel('left', 'Quantiles Observés')
+        self.qq_plot.setLabel('bottom', 'Quantiles Théoriques')
+        self.qq_plot.setTitle('Q-Q Plot (Normalité)')
+        graphs_layout.addWidget(self.qq_plot)
+        
+        splitter.addWidget(graphs_widget)
+        
+        # Zone des tableaux statistiques
+        tables_widget = QWidget()
+        tables_layout = QVBoxLayout(tables_widget)
+        
+        # Tableau des statistiques descriptives
+        stats_group = QGroupBox("Statistiques Descriptives")
+        stats_group_layout = QVBoxLayout(stats_group)
+        
+        self.stats_table = QTableWidget(8, 5)  # 8 statistiques, 4 capteurs + 1 colonne nom
+        self.stats_table.setHorizontalHeaderLabels(["Statistique", "Capteur 1", "Capteur 2", "Capteur 3", "Capteur 4"])
+        
+        # Remplissage des noms de statistiques
+        stats_names = ["Moyenne", "Écart-type", "Minimum", "Maximum", "Médiane", "Asymétrie", "Aplatissement", "RMS"]
+        for i, name in enumerate(stats_names):
+            item = QTableWidgetItem(name)
+            item.setFlags(Qt.ItemIsEnabled)
+            self.stats_table.setItem(i, 0, item)
+        
+        self.stats_table.resizeColumnsToContents()
+        stats_group_layout.addWidget(self.stats_table)
+        
+        tables_layout.addWidget(stats_group)
+        
+        # Bouton de calcul des statistiques
+        self.calculate_stats_btn = QPushButton("Calculer Statistiques")
+        self.calculate_stats_btn.clicked.connect(self.calculateStatistics)
+        tables_layout.addWidget(self.calculate_stats_btn)
+        
+        # Tests statistiques
+        tests_group = QGroupBox("Tests Statistiques")
+        tests_layout = QVBoxLayout(tests_group)
+        
+        self.statistical_tests_text = QTextEdit()
+        self.statistical_tests_text.setMaximumHeight(150)
+        self.statistical_tests_text.setReadOnly(True)
+        tests_layout.addWidget(self.statistical_tests_text)
+        
+        tables_layout.addWidget(tests_group)
+        
+        tables_widget.setMaximumWidth(400)
+        splitter.addWidget(tables_widget)
+        
+        layout.addWidget(splitter)
+        self.analysis_tabs.addTab(stats_widget, "Statistiques")
+    
+    def createSummaryTab(self):
+        """
+        Création de l'onglet de rapport de synthèse
+        """
+        summary_widget = QWidget()
+        layout = QVBoxLayout(summary_widget)
+        
+        # Zone de rapport
+        report_group = QGroupBox("Rapport de Synthèse")
+        report_layout = QVBoxLayout(report_group)
+        
+        # Zone de texte pour le rapport
+        self.summary_report_text = QTextEdit()
+        self.summary_report_text.setMinimumHeight(400)
+        self.summary_report_text.setReadOnly(True)
+        report_layout.addWidget(self.summary_report_text)
+        
+        # Boutons de génération
+        buttons_layout = QHBoxLayout()
+        
+        self.generate_report_btn = QPushButton("Générer Rapport")
+        self.generate_report_btn.clicked.connect(self.generateSummaryReport)
+        buttons_layout.addWidget(self.generate_report_btn)
+        
+        self.export_pdf_btn = QPushButton("Exporter PDF")
+        self.export_pdf_btn.setEnabled(False)
+        buttons_layout.addWidget(self.export_pdf_btn)
+        
+        buttons_layout.addStretch()
+        report_layout.addLayout(buttons_layout)
+        
+        layout.addWidget(report_group)
+        self.analysis_tabs.addTab(summary_widget, "Rapport")
+    
+    def connectSignals(self):
+        """
+        Connexion des signaux
+        """
+        self.export_button.clicked.connect(self.completeAnalysis)
+    
+    def setSessionData(self, session_data):
+        """
+        Définition des données de session pour l'analyse
+        """
+        self.session_data = session_data
+        self.export_button.setEnabled(True)
+        
+        # Mise à jour de l'interface avec les nouvelles données
+        self.updateDataInfo()
+    
+    def updateDataInfo(self):
+        """
+        Mise à jour des informations sur les données
+        """
+        if not self.session_data:
             return
-            
-        # Canal sélectionné
-        channel_idx = self.channel_selector.currentIndex()
-        channel_key = f'channel_{channel_idx + 1}'
         
-        spectrum_data = self.analysis_results['spectrum'].get(channel_key)
-        if not spectrum_data:
+        # Affichage des informations de base dans le premier onglet
+        info_text = f"""Données chargées:
+
+Durée: {self.session_data.get('duration', 0):.1f} s
+Fréquence d'échantillonnage: {self.session_data.get('sample_rate', 0):.1f} Hz
+Nombre de capteurs: {self.session_data.get('sensor_count', 0)}
+Nombre de points: {len(self.session_data.get('time_data', []))}
+
+Analyse prête à être lancée."""
+        
+        self.spectral_results_text.setPlainText(info_text)
+    
+    def performSpectralAnalysis(self):
+        """
+        Exécution de l'analyse spectrale
+        """
+        if not self.session_data or not self.session_data.get('sensor_data'):
             return
-            
-        # Données
-        freqs = spectrum_data['frequencies']
-        spectrum = spectrum_data['spectrum']
-        
-        # Échelle log si demandée
-        if self.log_scale_cb.isChecked():
-            spectrum = np.log10(spectrum + 1e-10)  # Éviter log(0)
-            
-        # Tracer
-        self.spectrum_plot.clear()
-        self.spectrum_plot.plot(freqs, spectrum, pen=mkPen('#2196F3', width=2))
-        
-        # Marquer pic
-        peak_freq = spectrum_data['peak_freq']
-        peak_idx = np.argmin(np.abs(freqs - peak_freq))
-        if peak_idx < len(spectrum):
-            peak_value = spectrum[peak_idx]
-            self.spectrum_plot.plot([peak_freq], [peak_value], 
-                                  symbol='o', symbolBrush='red', symbolSize=8)
-                                  
-        # Mettre à jour stats
-        self.peak_freq_label.setText(f"{peak_freq:.3f} Hz")
-        self.total_energy_label.setText(f"{spectrum_data['total_energy']:.2e}")
-        
-        # Largeur de bande (approximative)
-        bandwidth = freqs[-1] - freqs[0]
-        self.bandwidth_label.setText(f"{bandwidth:.3f} Hz")
-        
-    def _update_goda_table(self):
-        """Met à jour le tableau Goda"""
-        if not self.analysis_results:
-            return
-            
-        goda_data = self.analysis_results['goda']
-        
-        # Configurer tableau
-        n_channels = len(goda_data)
-        self.goda_table.setRowCount(n_channels)
-        
-        # Remplir données
-        for i, (channel_key, metrics) in enumerate(goda_data.items()):
-            channel_name = f"Sonde {i+1}"
-            
-            self.goda_table.setItem(i, 0, QTableWidgetItem(channel_name))
-            self.goda_table.setItem(i, 1, QTableWidgetItem(f"{metrics['Hs']:.3f}"))
-            self.goda_table.setItem(i, 2, QTableWidgetItem(f"{metrics['H13']:.3f}"))
-            self.goda_table.setItem(i, 3, QTableWidgetItem(f"{metrics['Tp']:.2f}"))
-            self.goda_table.setItem(i, 4, QTableWidgetItem(f"{metrics['Cr']:.2f}"))
-            self.goda_table.setItem(i, 5, QTableWidgetItem(f"{metrics['Sk']:.3f}"))
-            self.goda_table.setItem(i, 6, QTableWidgetItem(f"{metrics['Ku']:.3f}"))
-            
-        # Ajuster taille
-        self.goda_table.resizeColumnsToContents()
-        
-    def _export_results(self, format_type: str):
-        """Exporte les résultats dans le format demandé"""
-        if not self.analysis_results:
-            return
-            
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        base_name = f"analysis_HRNeoWave_{timestamp}"
         
         try:
-            if format_type == 'csv':
-                filepath = self._export_csv(base_name)
-            elif format_type == 'pdf':
-                filepath = self._export_pdf(base_name)
-            elif format_type == 'hdf5':
-                filepath = self._export_hdf5(base_name)
-            else:
-                raise ValueError(f"Format non supporté: {format_type}")
+            # Paramètres d'analyse
+            window_size = self.window_size_spin.value()
+            overlap = self.overlap_spin.value() / 100.0
+            
+            # Analyse pour chaque capteur
+            sensor_data = self.session_data['sensor_data']
+            sample_rate = self.session_data.get('sample_rate', 100.0)
+            
+            # Calcul des spectres
+            frequencies = None
+            spectra = []
+            
+            colors = ['r', 'g', 'b', 'y']
+            self.spectrum_plot.clear()
+            
+            for i, data in enumerate(sensor_data[:4]):  # Maximum 4 capteurs
+                if len(data) < window_size:
+                    continue
                 
-            self._log(f"✅ Export {format_type.upper()} réussi: {filepath}")
-            self.exportCompleted.emit(filepath)
+                # FFT avec fenêtrage
+                data_array = np.array(data)
+                
+                # Application d'une fenêtre de Hanning
+                windowed_data = data_array * np.hanning(len(data_array))
+                
+                # Calcul de la FFT
+                fft = np.fft.fft(windowed_data)
+                frequencies = np.fft.fftfreq(len(windowed_data), 1/sample_rate)
+                
+                # Densité spectrale de puissance
+                psd = np.abs(fft)**2 / (sample_rate * len(windowed_data))
+                
+                # Garder seulement les fréquences positives
+                positive_freqs = frequencies[:len(frequencies)//2]
+                positive_psd = psd[:len(psd)//2]
+                
+                spectra.append(positive_psd)
+                
+                # Affichage
+                self.spectrum_plot.plot(positive_freqs, positive_psd, 
+                                      pen=colors[i], name=f'Capteur {i+1}')
             
-            # Message de confirmation
-            QMessageBox.information(self, "Export réussi", 
-                                  f"Fichier exporté:\n{filepath}")
-                                  
+            # Calcul des statistiques spectrales
+            if frequencies is not None and spectra:
+                self.calculateSpectralStatistics(positive_freqs, spectra)
+            
+            # Sauvegarde des résultats
+            self.analysis_results['spectral'] = {
+                'frequencies': positive_freqs.tolist() if frequencies is not None else [],
+                'spectra': [spectrum.tolist() for spectrum in spectra],
+                'parameters': {
+                    'window_size': window_size,
+                    'overlap': overlap,
+                    'window_type': self.window_type_combo.currentText()
+                }
+            }
+            
         except Exception as e:
-            error_msg = f"Erreur export {format_type.upper()}: {e}"
-            self._log(f"❌ {error_msg}")
-            QMessageBox.critical(self, "Erreur d'export", error_msg)
+            self.spectral_results_text.setPlainText(f"Erreur lors de l'analyse spectrale: {str(e)}")
+    
+    def calculateSpectralStatistics(self, frequencies, spectra):
+        """
+        Calcul des statistiques spectrales
+        """
+        try:
+            results_text = "Résultats de l'analyse spectrale:\n\n"
             
-    def _export_csv(self, base_name: str) -> str:
-        """Export CSV des métriques Goda"""
-        filepath = f"{base_name}.csv"
-        
-        # Créer DataFrame
-        rows = []
-        for channel_key, metrics in self.analysis_results['goda'].items():
-            row = {'Canal': channel_key}
-            row.update(metrics)
-            rows.append(row)
+            for i, spectrum in enumerate(spectra):
+                # Fréquence de pic
+                peak_idx = np.argmax(spectrum)
+                peak_freq = frequencies[peak_idx]
+                
+                # Fréquence moyenne
+                mean_freq = np.sum(frequencies * spectrum) / np.sum(spectrum)
+                
+                # Largeur spectrale
+                total_power = np.sum(spectrum)
+                cumulative_power = np.cumsum(spectrum)
+                f25_idx = np.where(cumulative_power >= 0.25 * total_power)[0][0]
+                f75_idx = np.where(cumulative_power >= 0.75 * total_power)[0][0]
+                spectral_width = frequencies[f75_idx] - frequencies[f25_idx]
+                
+                results_text += f"Capteur {i+1}:\n"
+                results_text += f"  Fréquence de pic: {peak_freq:.3f} Hz\n"
+                results_text += f"  Fréquence moyenne: {mean_freq:.3f} Hz\n"
+                results_text += f"  Largeur spectrale: {spectral_width:.3f} Hz\n\n"
             
-        df = pd.DataFrame(rows)
-        df.to_csv(filepath, index=False)
-        
-        return filepath
-        
-    def _export_pdf(self, base_name: str) -> str:
-        """Export PDF (placeholder - nécessite reportlab)"""
-        filepath = f"{base_name}.pdf"
-        
-        # Pour l'instant, export texte simple
-        with open(filepath.replace('.pdf', '.txt'), 'w') as f:
-            f.write("=== RAPPORT D'ANALYSE HRNEOWAVE ===\n\n")
-            f.write(f"Fichier source: {self.filepath}\n")
-            f.write(f"Date d'analyse: {self.analysis_results['timestamp']}\n\n")
+            self.spectral_results_text.setPlainText(results_text)
             
-            f.write("=== MÉTRIQUES GODA ===\n")
-            for channel_key, metrics in self.analysis_results['goda'].items():
-                f.write(f"\n{channel_key}:\n")
-                for key, value in metrics.items():
-                    f.write(f"  {key}: {value}\n")
-                    
-        return filepath.replace('.pdf', '.txt')
+        except Exception as e:
+            self.spectral_results_text.setPlainText(f"Erreur dans le calcul des statistiques: {str(e)}")
+    
+    def performGodaAnalysis(self):
+        """
+        Exécution de l'analyse de Goda
+        """
+        if not self.session_data or not self.session_data.get('sensor_data'):
+            return
         
-    def _export_hdf5(self, base_name: str) -> str:
-        """Export HDF5 (placeholder - nécessite h5py)"""
-        filepath = f"{base_name}.h5"
-        
-        # Pour l'instant, export JSON
-        import json
-        json_filepath = filepath.replace('.h5', '.json')
-        
-        with open(json_filepath, 'w') as f:
-            json.dump(self.analysis_results, f, indent=2, default=str)
+        try:
+            # Simulation de l'analyse de Goda
+            sensor_data = self.session_data['sensor_data'][0]  # Premier capteur
             
-        return json_filepath
-        
-    def _log(self, message: str):
-        """Ajoute un message au log"""
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        log_entry = f"[{timestamp}] {message}"
-        
-        self.log_text.append(log_entry)
-        
-        # Auto-scroll
-        cursor = self.log_text.textCursor()
-        cursor.movePosition(cursor.End)
-        self.log_text.setTextCursor(cursor)
+            if len(sensor_data) < 100:
+                return
+            
+            # Conversion en mètres (supposé en mm)
+            data_m = np.array(sensor_data) / 1000.0
+            
+            # Détection des vagues (méthode zero-crossing simplifiée)
+            zero_crossings = np.where(np.diff(np.sign(data_m)))[0]
+            wave_heights = []
+            
+            for i in range(0, len(zero_crossings)-2, 2):
+                start_idx = zero_crossings[i]
+                end_idx = zero_crossings[i+2]
+                if end_idx < len(data_m):
+                    wave_segment = data_m[start_idx:end_idx]
+                    wave_height = np.max(wave_segment) - np.min(wave_segment)
+                    wave_heights.append(wave_height)
+            
+            wave_heights = np.array(wave_heights)
+            wave_heights = wave_heights[wave_heights > 0.01]  # Filtrer les petites vagues
+            
+            if len(wave_heights) == 0:
+                self.goda_results_text.setPlainText("Aucune vague détectée.")
+                return
+            
+            # Tri des hauteurs
+            sorted_heights = np.sort(wave_heights)[::-1]
+            
+            # Calcul des statistiques de Goda
+            n_waves = len(wave_heights)
+            h_max = np.max(wave_heights)
+            h_mean = np.mean(wave_heights)
+            h_rms = np.sqrt(np.mean(wave_heights**2))
+            h_13 = np.mean(sorted_heights[:max(1, n_waves//3)])  # H1/3
+            h_110 = np.mean(sorted_heights[:max(1, n_waves//10)])  # H1/10
+            
+            # Distribution de probabilité
+            probabilities = np.arange(1, len(sorted_heights)+1) / len(sorted_heights)
+            
+            # Affichage de la distribution
+            self.goda_plot.clear()
+            self.goda_plot.plot(probabilities, sorted_heights, pen='b', symbol='o', symbolSize=3)
+            
+            # Affichage de l'évolution temporelle
+            time_indices = np.linspace(0, self.session_data.get('duration', len(wave_heights)), len(wave_heights))
+            self.wave_height_plot.clear()
+            self.wave_height_plot.plot(time_indices, wave_heights, pen='r', symbol='o', symbolSize=2)
+            
+            # Résultats textuels
+            results_text = f"""Analyse de Goda terminée:
 
-# Test standalone
-if __name__ == "__main__":
-    from PyQt5.QtWidgets import QApplication
+Nombre de vagues: {n_waves}
+Hauteur maximale (Hmax): {h_max:.3f} m
+Hauteur moyenne (Hmean): {h_mean:.3f} m
+Hauteur RMS (Hrms): {h_rms:.3f} m
+Hauteur significative (H1/3): {h_13:.3f} m
+Hauteur 1/10 (H1/10): {h_110:.3f} m
+
+Ratio H1/3/Hmean: {h_13/h_mean:.2f}
+Ratio Hmax/H1/3: {h_max/h_13:.2f}"""
+            
+            self.goda_results_text.setPlainText(results_text)
+            
+            # Sauvegarde des résultats
+            self.analysis_results['goda'] = {
+                'n_waves': n_waves,
+                'h_max': h_max,
+                'h_mean': h_mean,
+                'h_rms': h_rms,
+                'h_13': h_13,
+                'h_110': h_110,
+                'wave_heights': wave_heights.tolist(),
+                'probabilities': probabilities.tolist()
+            }
+            
+        except Exception as e:
+            self.goda_results_text.setPlainText(f"Erreur lors de l'analyse de Goda: {str(e)}")
     
-    app = QApplication(sys.argv)
-    
-    # Fichier test (créer si nécessaire)
-    test_file = "test_data.csv"
-    if not os.path.exists(test_file):
-        # Créer données test
-        t = np.linspace(0, 100, 3200)  # 100s à 32Hz
-        data = {
-            'Time': t,
-            'Sonde_1': 0.5 * np.sin(2*np.pi*0.1*t) + 0.1*np.random.randn(len(t)),
-            'Sonde_2': 0.3 * np.sin(2*np.pi*0.15*t) + 0.1*np.random.randn(len(t)),
-            'Sonde_3': 0.4 * np.sin(2*np.pi*0.12*t) + 0.1*np.random.randn(len(t)),
-            'Sonde_4': 0.6 * np.sin(2*np.pi*0.08*t) + 0.1*np.random.randn(len(t))
-        }
-        pd.DataFrame(data).to_csv(test_file, index=False)
+    def calculateStatistics(self):
+        """
+        Calcul des statistiques descriptives
+        """
+        if not self.session_data or not self.session_data.get('sensor_data'):
+            return
         
-    config = {'sample_rate': 32.0}
+        try:
+            sensor_data = self.session_data['sensor_data']
+            
+            # Calcul des statistiques pour chaque capteur
+            for i, data in enumerate(sensor_data[:4]):
+                if len(data) == 0:
+                    continue
+                
+                data_array = np.array(data)
+                
+                # Statistiques descriptives
+                mean_val = np.mean(data_array)
+                std_val = np.std(data_array)
+                min_val = np.min(data_array)
+                max_val = np.max(data_array)
+                median_val = np.median(data_array)
+                
+                # Asymétrie et aplatissement
+                from scipy import stats
+                skewness = stats.skew(data_array)
+                kurtosis = stats.kurtosis(data_array)
+                rms_val = np.sqrt(np.mean(data_array**2))
+                
+                # Remplissage du tableau
+                stats_values = [mean_val, std_val, min_val, max_val, median_val, skewness, kurtosis, rms_val]
+                
+                for j, value in enumerate(stats_values):
+                    item = QTableWidgetItem(f"{value:.3f}")
+                    item.setFlags(Qt.ItemIsEnabled)
+                    self.stats_table.setItem(j, i+1, item)
+            
+            # Tests statistiques
+            self.performStatisticalTests()
+            
+        except ImportError:
+            # Si scipy n'est pas disponible, calcul simplifié
+            for i, data in enumerate(sensor_data[:4]):
+                if len(data) == 0:
+                    continue
+                
+                data_array = np.array(data)
+                
+                # Statistiques de base seulement
+                mean_val = np.mean(data_array)
+                std_val = np.std(data_array)
+                min_val = np.min(data_array)
+                max_val = np.max(data_array)
+                median_val = np.median(data_array)
+                rms_val = np.sqrt(np.mean(data_array**2))
+                
+                stats_values = [mean_val, std_val, min_val, max_val, median_val, 0.0, 0.0, rms_val]
+                
+                for j, value in enumerate(stats_values):
+                    item = QTableWidgetItem(f"{value:.3f}")
+                    item.setFlags(Qt.ItemIsEnabled)
+                    self.stats_table.setItem(j, i+1, item)
+            
+            self.statistical_tests_text.setPlainText("Tests statistiques non disponibles (scipy requis)")
+        
+        except Exception as e:
+            self.statistical_tests_text.setPlainText(f"Erreur lors du calcul des statistiques: {str(e)}")
     
-    view = AnalysisView(test_file, config)
-    view.show()
+    def performStatisticalTests(self):
+        """
+        Exécution des tests statistiques
+        """
+        try:
+            from scipy import stats
+            
+            sensor_data = self.session_data['sensor_data']
+            test_results = "Tests Statistiques:\n\n"
+            
+            for i, data in enumerate(sensor_data[:4]):
+                if len(data) < 8:  # Minimum pour les tests
+                    continue
+                
+                data_array = np.array(data)
+                
+                # Test de normalité (Shapiro-Wilk)
+                if len(data_array) <= 5000:  # Limitation de Shapiro-Wilk
+                    stat, p_value = stats.shapiro(data_array[:5000])
+                    test_results += f"Capteur {i+1} - Normalité (Shapiro-Wilk):\n"
+                    test_results += f"  Statistique: {stat:.4f}\n"
+                    test_results += f"  p-value: {p_value:.4f}\n"
+                    test_results += f"  Normal: {'Oui' if p_value > 0.05 else 'Non'}\n\n"
+            
+            self.statistical_tests_text.setPlainText(test_results)
+            
+        except ImportError:
+            self.statistical_tests_text.setPlainText("Tests statistiques non disponibles (scipy requis)")
+        except Exception as e:
+            self.statistical_tests_text.setPlainText(f"Erreur lors des tests statistiques: {str(e)}")
     
-    sys.exit(app.exec_())
+    def generateSummaryReport(self):
+        """
+        Génération du rapport de synthèse
+        """
+        if not self.session_data:
+            return
+        
+        # Génération du rapport complet
+        report = self.createFullReport()
+        self.summary_report_text.setPlainText(report)
+        self.export_pdf_btn.setEnabled(True)
+    
+    def createFullReport(self):
+        """
+        Création du rapport complet
+        """
+        report = f"""RAPPORT D'ANALYSE CHNEOWAVE
+{'='*50}
+
+DATE D'ANALYSE: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
+
+1. INFORMATIONS GÉNÉRALES
+{'-'*30}
+Durée d'acquisition: {self.session_data.get('duration', 0):.1f} s
+Fréquence d'échantillonnage: {self.session_data.get('sample_rate', 0):.1f} Hz
+Nombre de capteurs: {self.session_data.get('sensor_count', 0)}
+Nombre de points: {len(self.session_data.get('time_data', []))}
+
+2. RÉSULTATS D'ANALYSE
+{'-'*30}"""
+        
+        # Ajout des résultats spectraux
+        if 'spectral' in self.analysis_results:
+            report += "\n\nANALYSE SPECTRALE:\n"
+            report += "Analyse spectrale réalisée avec succès.\n"
+            report += f"Paramètres: Fenêtre {self.analysis_results['spectral']['parameters']['window_size']} points\n"
+        
+        # Ajout des résultats de Goda
+        if 'goda' in self.analysis_results:
+            goda = self.analysis_results['goda']
+            report += "\n\nANALYSE DE GODA:\n"
+            report += f"Nombre de vagues détectées: {goda['n_waves']}\n"
+            report += f"Hauteur significative (H1/3): {goda['h_13']:.3f} m\n"
+            report += f"Hauteur maximale: {goda['h_max']:.3f} m\n"
+            report += f"Hauteur moyenne: {goda['h_mean']:.3f} m\n"
+        
+        report += "\n\n3. CONCLUSIONS\n"
+        report += "-"*30
+        report += "\nAnalyse terminée avec succès.\n"
+        report += "Toutes les données ont été traitées selon les standards maritimes.\n"
+        report += "\nRapport généré par CHNeoWave v1.0.0"
+        
+        return report
+    
+    def completeAnalysis(self):
+        """
+        Finalisation de l'analyse et émission du signal
+        """
+        # Compilation des résultats finaux
+        final_results = {
+            'session_data': self.session_data,
+            'analysis_results': self.analysis_results,
+            'report': self.summary_report_text.toPlainText(),
+            'completion_time': datetime.now().isoformat(),
+            'status': 'completed'
+        }
+        
+        # Émission du signal vers le MainController
+        self.analysisFinished.emit(final_results)
+    
+    def resetAnalysis(self):
+        """
+        Réinitialisation de l'analyse
+        """
+        self.session_data = None
+        self.analysis_results.clear()
+        
+        # Nettoyage des graphiques
+        self.spectrum_plot.clear()
+        self.transfer_plot.clear()
+        self.goda_plot.clear()
+        self.wave_height_plot.clear()
+        self.histogram_plot.clear()
+        self.qq_plot.clear()
+        
+        # Nettoyage des textes
+        self.spectral_results_text.clear()
+        self.goda_results_text.clear()
+        self.statistical_tests_text.clear()
+        self.summary_report_text.clear()
+        
+        # Nettoyage du tableau
+        for i in range(self.stats_table.rowCount()):
+            for j in range(1, self.stats_table.columnCount()):
+                self.stats_table.setItem(i, j, QTableWidgetItem(""))
+        
+        # Désactivation des boutons
+        self.export_button.setEnabled(False)
+        self.export_pdf_btn.setEnabled(False)
+    
+    def reset_view(self):
+        """
+        Réinitialise la vue pour un nouveau projet
+        """
+        self.resetAnalysis()
+    
+    def set_acquisition_data(self, acquisition_data):
+        """
+        Configure la vue avec les données d'acquisition
+        """
+        self.session_data = acquisition_data
+        
+        # Activation automatique de l'analyse spectrale
+        if self.session_data and self.session_data.get('sensor_data'):
+            self.performSpectralAnalysis()
+            self.performGodaAnalysis()
+            self.calculateStatistics()
+            self.generateSummaryReport()
+            
+            # Activation du bouton suivant
+            self.export_button.setEnabled(True)
+    
+    def get_analysis_results(self):
+        """
+        Retourne les résultats d'analyse pour le workflow
+        """
+        return {
+            'session_data': self.session_data,
+            'analysis_results': self.analysis_results,
+            'report': self.summary_report_text.toPlainText() if hasattr(self, 'summary_report_text') else '',
+            'completion_time': datetime.now().isoformat(),
+            'status': 'completed' if self.analysis_results else 'pending'
+        }

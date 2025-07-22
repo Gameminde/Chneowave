@@ -1,178 +1,190 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Vue d'accueil pour CHNeoWave
-Gestion de la création de projet avec validation
+Vue d'accueil CHNeoWave - Gestion de Projet
+Étape 1 : Créer ou ouvrir un projet
 """
 
-from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, 
-    QLineEdit, QPushButton, QDateEdit
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QFormLayout, QLabel, QLineEdit, 
+    QPushButton, QDateEdit, QTextEdit
 )
-from PyQt5.QtCore import Qt, QDate, pyqtSlot, pyqtSignal
-from PyQt5.QtGui import QFont
-
-# Import du système d'erreurs unifié
-try:
-    from ...core.signal_bus import get_error_bus
-    ErrorBus = get_error_bus
-except ImportError:
-    # Fallback si le système d'erreurs n'est pas disponible
-    class ErrorBus:
-        @staticmethod
-        def instance():
-            return ErrorBus()
-        
-        def error(self):
-            return ErrorBus()
-        
-        def emit(self, module, message, level):
-            print(f"[{module}] {message}")
-
+from PySide6.QtCore import Signal, QDate
+from PySide6.QtGui import QFont
 
 class WelcomeView(QWidget):
-    """Vue d'accueil avec création de projet"""
+    """
+    Vue d'accueil pour la création/ouverture de projet
+    Respecte le principe d'isolation : UNIQUEMENT la gestion de projet
+    """
     
-    # Signal émis lors de la création d'un projet
-    projectCreated = pyqtSignal(dict)  # Émet les métadonnées du projet
+    # Signal émis lors de la sélection du projet
+    projectSelected = Signal(str)  # Chemin du projet (vide pour nouveau projet)
     
     def __init__(self, parent=None):
         super().__init__(parent)
-        self._setup_ui()
-        self._setup_connections()
-        self.project_created = False     # flag global
+        self.setupUI()
+        self.connectSignals()
     
-    def _setup_ui(self):
-        """Configure l'interface utilisateur"""
-        layout = QVBoxLayout(self)
-        layout.setSpacing(20)
-        layout.setContentsMargins(40, 40, 40, 40)
+    def setupUI(self):
+        """
+        Configuration de l'interface utilisateur
+        """
+
         
-        # Titre
-        title_layout = QVBoxLayout()
-        title_layout.setAlignment(Qt.AlignCenter)
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(40, 40, 40, 40)
+        main_layout.setSpacing(30)
         
-        # Formulaire de projet
-        form_group = QWidget()
-        form_group.setMaximumWidth(400)
-        form_layout = QFormLayout(form_group)
+        # Titre principal
+        title_label = QLabel("CHNeoWave : Gestion de Projet")
+        title_font = QFont()
+        title_font.setPointSize(18)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #2980b9; margin-bottom: 20px;")
+        main_layout.addWidget(title_label)
         
-        # Champs du projet
-        self.le_name = QLineEdit()
-        self.le_name.setPlaceholderText("Entrez le nom du projet")
+        # Formulaire de métadonnées du projet
+        form_layout = QFormLayout()
+        form_layout.setSpacing(15)
         
-        self.le_owner = QLineEdit()
-        self.le_owner.setPlaceholderText("Entrez le nom du chef de projet")
+        # Champs obligatoires
+        self.project_name = QLineEdit()
+        self.project_name.setPlaceholderText("Nom du projet d'essai")
+        self.project_name.setMinimumHeight(35)
+        form_layout.addRow("Nom du Projet *:", self.project_name)
         
-        self.de_date = QDateEdit(calendarPopup=True)
-        self.de_date.setDate(QDate.currentDate())
-        self.de_date.setDisplayFormat("dd/MM/yyyy")
+        self.project_manager = QLineEdit()
+        self.project_manager.setPlaceholderText("Nom du chef de projet")
+        self.project_manager.setMinimumHeight(35)
+        form_layout.addRow("Chef de Projet *:", self.project_manager)
         
-        form_layout.addRow("Nom du projet *", self.le_name)
-        form_layout.addRow("Chef de projet *", self.le_owner)
-        form_layout.addRow("Date *", self.de_date)
+        self.laboratory = QLineEdit()
+        self.laboratory.setPlaceholderText("Nom du laboratoire")
+        self.laboratory.setMinimumHeight(35)
+        form_layout.addRow("Laboratoire *:", self.laboratory)
         
-        # Centrer le formulaire
-        form_container = QHBoxLayout()
-        form_container.addStretch(1)
-        form_container.addWidget(form_group)
-        form_container.addStretch(1)
+        # Champs optionnels
+        self.project_date = QDateEdit()
+        self.project_date.setDate(QDate.currentDate())
+        self.project_date.setMinimumHeight(35)
+        form_layout.addRow("Date de l'Essai:", self.project_date)
         
-        # Boutons
-        buttons = QHBoxLayout()
-        self.btn_create = QPushButton("Créer le projet")
-        self.btn_create.setEnabled(True)               # toujours visible
-        self.btn_create.setMinimumHeight(40)
-        self.btn_create.setStyleSheet("""
+        self.description = QTextEdit()
+        self.description.setPlaceholderText("Description de l'essai (optionnel)")
+        self.description.setMaximumHeight(100)
+        form_layout.addRow("Description:", self.description)
+        
+        main_layout.addLayout(form_layout)
+        
+        # Espacement flexible
+        main_layout.addStretch()
+        
+        # Bouton de validation
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
+        self.validate_button = QPushButton("Valider et Continuer")
+        self.validate_button.setMinimumHeight(45)
+        self.validate_button.setMinimumWidth(200)
+        self.validate_button.setEnabled(False)  # Désactivé par défaut
+        self.validate_button.setStyleSheet("""
             QPushButton {
-                background-color: #2196F3;
+                background-color: #2980b9;
                 color: white;
                 border: none;
-                border-radius: 5px;
+                border-radius: 8px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 12pt;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background-color: #1e3a5f;
             }
-            QPushButton:pressed {
-                background-color: #0D47A1;
+            QPushButton:disabled {
+                background-color: #95a5a6;
+                color: #34495e;
             }
         """)
         
-        buttons.addStretch(1)
-        buttons.addWidget(self.btn_create)
-        
-        # Assemblage final
-        layout.addStretch(1)
-        layout.addLayout(title_layout)
-        layout.addLayout(form_container)
-        layout.addLayout(buttons)
-        layout.addStretch(2)
+        button_layout.addWidget(self.validate_button)
+        main_layout.addLayout(button_layout)
     
-    def _setup_connections(self):
-        """Configure les connexions de signaux"""
-        self.btn_create.clicked.connect(self._on_create_project)
+    def connectSignals(self):
+        """
+        Connexion des signaux
+        """
+        # Validation en temps réel
+        self.project_name.textChanged.connect(self.validateForm)
+        self.project_manager.textChanged.connect(self.validateForm)
+        self.laboratory.textChanged.connect(self.validateForm)
+        
+        # Debug pour tracer le clic
+        self.validate_button.clicked.connect(lambda: print("[DEBUG] Bouton Valider cliqué"))
+        
+        # Validation du projet
+        self.validate_button.clicked.connect(self.validateProject)
     
-    @pyqtSlot()
-    def _on_create_project(self):
-        """Gère la création du projet avec validation"""
-        # Validation des champs obligatoires
-        if not all([self.le_name.text().strip(), 
-                    self.le_owner.text().strip()]):
-            from PyQt5.QtWidgets import QMessageBox
-            QMessageBox.warning(
-                self,
-                "Champs manquants",
-                "Veuillez renseigner Nom et Chef de projet avant de créer."
-            )
-            return
+    def validateForm(self):
+        """
+        Validation en temps réel du formulaire
+        Active le bouton uniquement si tous les champs obligatoires sont remplis
+        """
+        required_fields = [
+            self.project_name.text().strip(),
+            self.project_manager.text().strip(),
+            self.laboratory.text().strip()
+        ]
         
-        # Marquer le projet comme créé
-        self.project_created = True
+        all_filled = all(field for field in required_fields)
+        self.validate_button.setEnabled(all_filled)
+    
+    def validateProject(self):
+        """
+        Validation finale et émission du signal
+        Pour un nouveau projet, on émet un chemin vide
+        """
+        # 🔍 TRAÇAGE FIN - Ajouté pour diagnostic navigation
+        print("[DEBUG] slot validate called")
+        print(f"[DEBUG] Début validateProject - Données du projet:")
         
-        # Préparer les métadonnées du projet
-        project_meta = {
-            "name": self.le_name.text().strip(),
-            "owner": self.le_owner.text().strip(),
-            "date": self.de_date.date().toString("yyyy-MM-dd")
+        # Stocker les métadonnées dans l'instance pour récupération ultérieure
+        self.project_metadata = {
+            'name': self.project_name.text().strip(),
+            'manager': self.project_manager.text().strip(),
+            'laboratory': self.laboratory.text().strip(),
+            'date': self.project_date.date().toString('yyyy-MM-dd'),
+            'description': self.description.toPlainText().strip()
         }
         
-        # Propager dans le MainController via le parent window
-        try:
-            main_window = self.parent().window()
-            if hasattr(main_window, 'project_meta'):
-                main_window.project_meta = project_meta
-            if hasattr(main_window, 'projectCreated'):
-                main_window.projectCreated.emit()
-        except Exception as e:
-            print(f"Erreur lors de la propagation du projet: {e}")
+        print(f"[DEBUG] Métadonnées projet: {self.project_metadata}")
+        print(f"[DEBUG] Émission du signal projectSelected...")
         
-        # Émettre le signal local
-        self.projectCreated.emit(project_meta)
+        # Émission du signal vers le ViewManager (chemin vide = nouveau projet)
+        self.projectSelected.emit('')
         
-        # Message de confirmation
-        from PyQt5.QtWidgets import QMessageBox
-        QMessageBox.information(
-            self,
-            "Projet créé",
-            f"Projet « {self.le_name.text()} » créé avec succès."
-        )
+        print(f"[DEBUG] Signal projectSelected émis avec succès")
+        print(f"[DEBUG] Fin validateProject")
     
-    def get_project_data(self):
-        """Retourne les données du projet actuel"""
-        if not self.project_created:
-            return None
+    def resetForm(self):
+        """
+        Réinitialisation du formulaire
+        """
+        self.project_name.clear()
+        self.project_manager.clear()
+        self.laboratory.clear()
+        self.project_date.setDate(QDate.currentDate())
+        self.description.clear()
+        self.validate_button.setEnabled(False)
         
-        return {
-            "name": self.le_name.text().strip(),
-            "owner": self.le_owner.text().strip(),
-            "date": self.de_date.date().toString("yyyy-MM-dd")
-        }
-    
-    def reset_form(self):
-        """Remet à zéro le formulaire"""
-        self.le_name.clear()
-        self.le_owner.clear()
-        self.de_date.setDate(QDate.currentDate())
-        self.project_created = False
+    def reset_view(self):
+        """
+        Méthode requise par le ViewManager pour réinitialiser la vue
+        """
+        self.resetForm()
+        
+    def get_project_metadata(self):
+        """
+        Retourne les métadonnées du projet actuel
+        """
+        return getattr(self, 'project_metadata', {})

@@ -1,0 +1,29 @@
+{
+  "timestamp": "2025-07-20T12:44:07.149648",
+  "version": "CHNeoWave v1.1.0-beta",
+  "total_tests": 3,
+  "passed": 1,
+  "failed": 2,
+  "errors": 0,
+  "timeouts": 0,
+  "total_duration": 22.235036373138428,
+  "results": {
+    "test_launch_gui.py": {
+      "status": "failed",
+      "duration": 10.757537126541138,
+      "output": "============================= test session starts =============================\ncollecting ... collected 3 items\n\ntests_smoke/test_launch_gui.py::TestLaunchGUI::test_gui_startup_simulation ",
+      "error": ""
+    },
+    "test_export_hdf5.py": {
+      "status": "failed",
+      "duration": 7.423869371414185,
+      "output": "============================= test session starts =============================\ncollecting ... collected 4 items\n\ntests_smoke/test_export_hdf5.py::TestExportHDF5::test_hdf5_writer_basic PASSED [ 25%]\ntests_smoke/test_export_hdf5.py::TestExportHDF5::test_simulated_acquisition_export PASSED [ 50%]\ntests_smoke/test_export_hdf5.py::TestExportHDF5::test_hdf5_integrity_verification FAILED [ 75%]\ntests_smoke/test_export_hdf5.py::TestExportHDF5::test_large_dataset_export PASSED [100%]\n\n================================== FAILURES ===================================\n_______________ TestExportHDF5.test_hdf5_integrity_verification _______________\ntests_smoke\\test_export_hdf5.py:217: in test_hdf5_integrity_verification\n    assert is_valid, \"Vérification d'intégrité échouée\"\nE   AssertionError: Vérification d'intégrité échouée\nE   assert False\n\nDuring handling of the above exception, another exception occurred:\ntests_smoke\\test_export_hdf5.py:238: in test_hdf5_integrity_verification\n    pytest.fail(f\"Erreur test intégrité HDF5: {str(e)}\")\nE   Failed: Erreur test intégrité HDF5: Vérification d'intégrité échouée\nE   assert False\n=========================== short test summary info ===========================\nFAILED tests_smoke/test_export_hdf5.py::TestExportHDF5::test_hdf5_integrity_verification\n========================= 1 failed, 3 passed in 6.64s =========================\n",
+      "error": ""
+    },
+    "test_calib_pdf.py": {
+      "status": "success",
+      "duration": 4.0536298751831055,
+      "output": "============================= test session starts =============================\ncollecting ... collected 6 items\n\ntests_smoke/test_calib_pdf.py::TestCalibPDF::test_pdf_generator_basic PASSED [ 16%]\ntests_smoke/test_calib_pdf.py::TestCalibPDF::test_pdf_content_verification PASSED [ 33%]\ntests_smoke/test_calib_pdf.py::TestCalibPDF::test_pdf_with_high_quality_calibration PASSED [ 50%]\ntests_smoke/test_calib_pdf.py::TestCalibPDF::test_pdf_with_multiple_sensors PASSED [ 66%]\ntests_smoke/test_calib_pdf.py::TestCalibPDF::test_pdf_signature_verification PASSED [ 83%]\ntests_smoke/test_calib_pdf.py::TestCalibPDF::test_pdf_error_handling PASSED [100%]\n\n======================== 6 passed, 1 warning in 3.15s =========================\n"
+    }
+  }
+}

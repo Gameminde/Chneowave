@@ -5,23 +5,17 @@ Fenêtre principale pour CHNeoWave
 Gestion des signaux de projet et coordination des vues
 """
 
-from PyQt5.QtWidgets import (
-    QMainWindow, QStackedWidget, QVBoxLayout, QWidget,
-    QMenuBar, QStatusBar, QAction, QMessageBox
-)
-from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
-from PyQt5.QtGui import QIcon
+from PySide6.QtWidgets import QMainWindow, QMessageBox
+from PySide6.QtCore import Signal, Slot
+from hrneowave.core.signal_bus import get_error_bus, ErrorLevel
+from .view_manager import ViewManager
 
 # Import des vues
-try:
-    from .views.welcome_view import WelcomeView
-    from .views.acquisition_view import AcquisitionView
-    from .views.analysis_view import AnalysisView
-except ImportError:
-    # Fallback si les vues ne sont pas disponibles
-    WelcomeView = None
-    AcquisitionView = None
-    AnalysisView = None
+from .views.welcome_view import WelcomeView
+from .views.acquisition_view import AcquisitionView
+from .views.analysis_view import AnalysisView
+from hrneowave.gui.controllers.acquisition_controller import AcquisitionController
+
 
 # Import des widgets
 try:
@@ -38,9 +32,13 @@ except ImportError:
 class MainWindow(QMainWindow):
     """Fenêtre principale de l'application CHNeoWave"""
     
-    projectCreated = pyqtSignal()          # nouveau signal
+    projectCreated = Signal()          # nouveau signal
     
     def __init__(self, config=None, parent=None):
+        # Import des classes Qt seulement quand nécessaire
+        from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
+        from PySide6.QtCore import Qt
+        
         super().__init__(parent)
         self.setWindowTitle("CHNeoWave")
         self.setMinimumSize(1024, 768)
@@ -53,75 +51,58 @@ class MainWindow(QMainWindow):
         
         # État de l'application
         self.is_acquiring = False
+        self.acquisition_controller = None
+        self.analysis_controller = None
+        self.project_controller = None
         
         # Construction de l'interface
-        self._build_stack()
+        self._build_ui()
         self._setup_docks()
         self._setup_menu()
         self._setup_status_bar()
         self._setup_connections()
     
-    def _build_stack(self):
-        """Construit le widget empilé avec les différentes vues"""
-        # Widget central
+    def _build_ui(self):
+        """Construit l'interface utilisateur principale"""
+        from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
+        
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        
-        # Layout principal
         layout = QVBoxLayout(central_widget)
         layout.setContentsMargins(0, 0, 0, 0)
-        
-        # Stack widget pour les vues
+
         self.stack_widget = QStackedWidget()
         layout.addWidget(self.stack_widget)
-        
-        # Création des vues
-        self._create_views()
+
+        # Initialiser le gestionnaire de vues
+        from hrneowave.gui.view_manager import get_view_manager
+        self.view_manager = get_view_manager(self.stack_widget)
+
+        self._create_and_register_views()
     
-    def _create_views(self):
-        """Crée et ajoute les vues au stack widget"""
-        # Vue d'accueil
-        if WelcomeView:
-            self.welcome_view = WelcomeView()
-            self.stack_widget.addWidget(self.welcome_view)
-        else:
-            self.welcome_view = None
-        
-        # Vue d'acquisition
-        if AcquisitionView:
-            try:
-                self.acquisition_view = AcquisitionView(
-                    config=self.config,
-                    acquisition_controller=None  # À initialiser plus tard
-                )
-                self.stack_widget.addWidget(self.acquisition_view)
-            except Exception as e:
-                print(f"Erreur création AcquisitionView: {e}")
-                self.acquisition_view = None
-        else:
-            self.acquisition_view = None
-        
-        # Vue d'analyse
-        if AnalysisView:
-            try:
-                # Essayer de créer AnalysisView avec gestion d'erreur pour les arguments
-                self.analysis_view = AnalysisView()
-                self.stack_widget.addWidget(self.analysis_view)
-            except Exception as e:
-                print(f"Erreur création AnalysisView: {e}")
-                # Créer une vue de substitution
-                from PyQt5.QtWidgets import QLabel
-                self.analysis_view = QLabel("Vue d'analyse indisponible (arguments manquants)")
-                self.stack_widget.addWidget(self.analysis_view)
-        else:
-            self.analysis_view = None
-        
+    def _create_and_register_views(self):
+        """Crée et enregistre les vues auprès du ViewManager"""
+        self.welcome_view = WelcomeView()
+        self.view_manager.register_view('welcome', self.welcome_view)
+
+        self.acquisition_view = AcquisitionView()
+        self.view_manager.register_view('acquisition', self.acquisition_view)
+
+        self.analysis_view = AnalysisView()
+        self.view_manager.register_view('analysis', self.analysis_view)
+
+        # Initialiser les contrôleurs
+        self._create_project_controller()
+        self._create_analysis_controller()
+        self._create_acquisition_controller()
+
         # Démarrer sur la vue d'accueil
-        if self.welcome_view:
-            self.stack_widget.setCurrentWidget(self.welcome_view)
+        self.view_manager.switch_to_view('welcome')
     
     def _setup_docks(self):
         """Configure les docks widgets"""
+        from PySide6.QtCore import Qt
+        
         # Dock Infos Essai
         if InfosEssaiDock:
             self.infos_essai_dock = InfosEssaiDock(self)
@@ -145,6 +126,8 @@ class MainWindow(QMainWindow):
     
     def _setup_menu(self):
         """Configure la barre de menu"""
+        from PySide6.QtGui import QAction
+        
         menubar = self.menuBar()
         
         # Menu Fichier
@@ -164,48 +147,83 @@ class MainWindow(QMainWindow):
         
         # Menu Vues
         view_menu = menubar.addMenu('Vues')
-        
+
         welcome_action = QAction('Accueil', self)
-        welcome_action.triggered.connect(lambda: self._switch_to_view('welcome'))
+        welcome_action.triggered.connect(lambda: self.view_manager.switch_to_view('welcome'))
         view_menu.addAction(welcome_action)
-        
+
         acquisition_action = QAction('Acquisition', self)
-        acquisition_action.triggered.connect(lambda: self._switch_to_view('acquisition'))
+        acquisition_action.triggered.connect(lambda: self.view_manager.switch_to_view('acquisition'))
         view_menu.addAction(acquisition_action)
-        
+
         analysis_action = QAction('Analyse', self)
-        analysis_action.triggered.connect(lambda: self._switch_to_view('analysis'))
+        analysis_action.triggered.connect(lambda: self.view_manager.switch_to_view('analysis'))
         view_menu.addAction(analysis_action)
     
+    def _create_project_controller(self):
+        """Crée et configure le gestionnaire de projet."""
+        from ..core.project_manager import ProjectManager
+        self.project_controller = ProjectManager()
+
     def _setup_status_bar(self):
         """Configure la barre de statut"""
+        from PySide6.QtWidgets import QStatusBar
+        
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Prêt")
     
+    def _create_acquisition_controller(self):
+        """Crée et configure le contrôleur d'acquisition."""
+        from hrneowave.gui.controllers.acquisition_controller import AcquisitionConfig, AcquisitionMode
+        
+        # Créer une configuration d'acquisition par défaut
+        acquisition_config = AcquisitionConfig(
+            mode=AcquisitionMode.SIMULATE,
+            sample_rate=1000,
+            n_channels=4,
+            buffer_size=10000
+        )
+        
+        # Créer le contrôleur d'acquisition
+        self.acquisition_controller = AcquisitionController(config=acquisition_config)
+        self.acquisition_view.set_controller(self.acquisition_controller)
+
+        # Connecter les signaux du contrôleur à l'interface
+        if hasattr(self.acquisition_controller, 'acquisition_started'):
+            self.acquisition_controller.acquisition_started.connect(self._on_acquisition_started)
+        if hasattr(self.acquisition_controller, 'acquisition_stopped'):
+            self.acquisition_controller.acquisition_stopped.connect(self._on_acquisition_stopped)
+        if hasattr(self.acquisition_controller, 'acquisition_progress'):
+            self.acquisition_controller.acquisition_progress.connect(self.update_acquisition_progress)
+
+    def _create_analysis_controller(self):
+        """Configure la vue d'analyse (pas de contrôleur séparé)."""
+        # AnalysisView fonctionne de manière autonome
+        # Connecter directement les signaux de la vue
+        if hasattr(self.analysis_view, 'analysisFinished'):
+            self.analysis_view.analysisFinished.connect(self._on_analysis_finished)
+
     def _setup_connections(self):
         """Configure les connexions de signaux"""
-        # Signal de création de projet
+        # Connexions liées au projet
+        # Note: ProjectManager n'hérite pas de QObject, donc pas de signaux Qt
+        # La gestion des projets se fait via des appels directs
+
+        if self.welcome_view:
+            self.welcome_view.projectCreated.connect(self._handle_project_creation)
+
+        # Connexions liées à l'état de l'application
         self.projectCreated.connect(self._unlock_acquisition)
         
-        # Connexions avec les vues
-        if self.welcome_view:
-            self.welcome_view.projectCreated.connect(self._on_project_created)
-        
+        # État initial des boutons
         if self.acquisition_view:
-            # Désactiver les boutons d'acquisition au démarrage
             if hasattr(self.acquisition_view, 'btn_start'):
                 self.acquisition_view.btn_start.setEnabled(False)
             if hasattr(self.acquisition_view, 'btn_export'):
                 self.acquisition_view.btn_export.setEnabled(False)
-            
-            # Connecter les signaux d'acquisition au dock infos essai
-            if self.infos_essai_dock:
-                # Simuler des connexions pour les signaux d'acquisition
-                # Ces connexions seront complétées quand les contrôleurs seront disponibles
-                pass
     
-    @pyqtSlot()
+    @Slot()
     def _unlock_acquisition(self):
         """Déverrouille les fonctionnalités d'acquisition après création du projet"""
         if self.acquisition_view:
@@ -224,22 +242,63 @@ class MainWindow(QMainWindow):
         # Mettre à jour la barre de statut
         self.status_bar.showMessage(f"Projet '{meta.get('name', 'Inconnu')}' créé - Acquisition disponible")
     
-    @pyqtSlot(dict)
-    def _on_project_created(self, project_data):
-        """Gère la réception des données de projet depuis WelcomeView"""
-        self.project_meta = project_data
+    @Slot(dict)
+    def _handle_project_creation(self, project_data):
+        """Gère la création d'un nouveau projet."""
+        try:
+            # Créer le projet via ProjectManager
+            project_id = self.project_controller.create_project(
+                name=project_data.get('name', 'Nouveau projet'),
+                description=project_data.get('description', ''),
+                author=project_data.get('owner', 'Utilisateur'),
+                location=project_data.get('location', ''),
+                basin_type=project_data.get('type', 'Standard')
+            )
+            
+            # Charger le projet créé
+            if self.project_controller.load_project(project_id):
+                self.project_meta = project_data
+                
+                # Mettre à jour le dock infos essai avec les données du projet
+                if self.infos_essai_dock:
+                    self.infos_essai_dock.set_essai_info(
+                        nom=project_data.get('name', 'Nouveau projet'),
+                        operateur=project_data.get('owner', 'Utilisateur'),
+                        configuration=project_data.get('type', 'Standard')
+                    )
+                
+                self.projectCreated.emit()
+                self.view_manager.switch_to_view('acquisition')
+                print(f"[DEBUG] Navigation vers vue 'acquisition' effectuée")
+            else:
+                self._on_project_creation_failed("Erreur", "Impossible de charger le projet créé")
+                
+        except Exception as e:
+            self._on_project_creation_failed("Erreur de création", str(e))
+    
+    @Slot(dict)
+    def _on_project_created(self, project_meta):
+        """Gère la création réussie d'un projet par le contrôleur."""
+        self.project_meta = project_meta
         
         # Mettre à jour le dock infos essai avec les données du projet
         if self.infos_essai_dock:
             self.infos_essai_dock.set_essai_info(
-                nom=project_data.get('name', 'Nouveau projet'),
-                operateur=project_data.get('owner', 'Utilisateur'),
-                configuration=project_data.get('type', 'Standard')
+                nom=project_meta.get('name', 'Nouveau projet'),
+                operateur=project_meta.get('owner', 'Utilisateur'),
+                configuration=project_meta.get('type', 'Standard')
             )
         
         self.projectCreated.emit()
+        self.view_manager.switch_to_view('acquisition')
+
+    @Slot(str, str)
+    def _on_project_creation_failed(self, error_title, error_message):
+        """Affiche une erreur si la création du projet échoue."""
+        QMessageBox.critical(self, error_title, error_message)
+        self.status_bar.showMessage("Échec de la création du projet")
     
-    @pyqtSlot(dict)
+    @Slot(dict)
     def _on_essai_updated(self, essai_data):
         """Gère les mises à jour des informations d'essai"""
         # Mettre à jour la barre de statut avec les infos essai
@@ -257,39 +316,51 @@ class MainWindow(QMainWindow):
         else:
             self.status_bar.showMessage(f"Statut: {statut} - {nom}")
     
-    def start_acquisition(self, config=None):
-        """Démarre une acquisition (méthode publique pour les contrôleurs)"""
-        if self.infos_essai_dock and self.project_meta:
-            # Configurer les paramètres d'acquisition
-            if config:
-                self.infos_essai_dock.set_acquisition_config(
-                    nb_sondes=config.get('nb_sondes', 4),
-                    freq_echantillonnage=config.get('freq_echantillonnage', 1000),
-                    taille_buffer=config.get('taille_buffer', 10000)
-                )
-            
-            # Démarrer l'essai
+    def start_acquisition(self):
+        """Démarre une acquisition via le contrôleur."""
+        if self.acquisition_controller and self.project_meta:
+            self.acquisition_controller.start()
+
+    def _on_acquisition_started(self):
+        """Gère le démarrage effectif de l'acquisition."""
+        self.is_acquiring = True
+        if self.infos_essai_dock:
             self.infos_essai_dock.start_essai(
                 nom=self.project_meta.get('name', 'Acquisition'),
                 operateur=self.project_meta.get('owner', 'Utilisateur'),
                 configuration=self.project_meta.get('type', 'Standard')
             )
-            
-            self.is_acquiring = True
     
     def stop_acquisition(self):
-        """Arrête l'acquisition en cours"""
+        """Arrête l'acquisition en cours via le contrôleur."""
+        if self.acquisition_controller:
+            self.acquisition_controller.stop()
+
+    def _on_acquisition_stopped(self):
+        """Gère l'arrêt effectif de l'acquisition."""
+        self.is_acquiring = False
         if self.infos_essai_dock:
             self.infos_essai_dock.stop_essai()
+
+    def _on_analysis_finished(self, results):
+        """Gère la fin de l'analyse."""
+        self.status_bar.showMessage("Analyse terminée.")
+        # AnalysisView gère ses propres résultats
         self.is_acquiring = False
+        if self.infos_essai_dock:
+            self.infos_essai_dock.stop_essai()
     
     def pause_acquisition(self):
-        """Met en pause l'acquisition"""
+        """Met en pause l'acquisition via le contrôleur."""
+        if self.acquisition_controller:
+            self.acquisition_controller.pause()
         if self.infos_essai_dock:
             self.infos_essai_dock.pause_essai()
     
     def resume_acquisition(self):
-        """Reprend l'acquisition"""
+        """Reprend l'acquisition via le contrôleur."""
+        if self.acquisition_controller:
+            self.acquisition_controller.resume()
         if self.infos_essai_dock:
             self.infos_essai_dock.resume_essai()
     
@@ -298,7 +369,7 @@ class MainWindow(QMainWindow):
         if self.infos_essai_dock:
             self.infos_essai_dock.update_echantillons(nb_echantillons)
     
-    @pyqtSlot(int)
+    @Slot(int)
     def _on_capteur_selected(self, capteur_id):
         """Gère la sélection d'un capteur"""
         # Mettre à jour la barre de statut
@@ -308,7 +379,7 @@ class MainWindow(QMainWindow):
         # TODO: Connecter aux vues qui ont besoin de cette information
         print(f"Capteur {capteur_id} sélectionné")
     
-    @pyqtSlot(dict)
+    @Slot(dict)
     def _on_capteurs_updated(self, capteurs_data):
         """Gère les mises à jour des capteurs"""
         # Calculer des statistiques pour la barre de statut
@@ -347,58 +418,37 @@ class MainWindow(QMainWindow):
         if self.etat_capteurs_dock:
             self.etat_capteurs_dock.set_capteur_data(capteur_id, **kwargs)
     
-    def _switch_to_view(self, view_name):
-        """Change la vue active"""
-        if view_name == 'welcome' and self.welcome_view:
-            self.stack_widget.setCurrentWidget(self.welcome_view)
-        elif view_name == 'acquisition' and self.acquisition_view:
-            self.stack_widget.setCurrentWidget(self.acquisition_view)
-        elif view_name == 'analysis' and self.analysis_view:
-            self.stack_widget.setCurrentWidget(self.analysis_view)
-    
     def _new_project(self):
-        """Crée un nouveau projet"""
+        """Crée un nouveau projet via le contrôleur."""
         if self.is_acquiring:
-            QMessageBox.warning(
-                self, 
-                "Nouveau Projet", 
-                "Impossible de créer un nouveau projet pendant l'acquisition."
+            get_error_bus().emit_error(
+                ErrorLevel.WARNING,
+                "Impossible de créer un nouveau projet pendant l'acquisition.",
+                source='MainWindow'
             )
             return
-        
-        # Réinitialiser les données
+
+        # Réinitialisation via le contrôleur de projet si nécessaire
+        # Pour l'instant, on se contente de revenir à l'écran d'accueil
+
+        # Réinitialiser l'état de l'interface
         self.project_meta = {}
-        
-        # Désactiver l'acquisition
         if self.acquisition_view:
             if hasattr(self.acquisition_view, 'btn_start'):
                 self.acquisition_view.btn_start.setEnabled(False)
             if hasattr(self.acquisition_view, 'btn_export'):
                 self.acquisition_view.btn_export.setEnabled(False)
-        
-        # Réinitialiser la vue d'accueil
+
         if self.welcome_view and hasattr(self.welcome_view, 'reset_form'):
             self.welcome_view.reset_form()
-        
-        # Retourner à la vue d'accueil
-        self._switch_to_view('welcome')
-        
-        # Réinitialiser le titre
+
+        self.view_manager.switch_to_view('welcome')
         self.setWindowTitle("CHNeoWave")
         self.status_bar.showMessage("Nouveau projet - Veuillez renseigner les informations")
     
     def get_current_view(self):
         """Retourne la vue actuellement active"""
-        current = self.stack_widget.currentWidget()
-        
-        if current == self.welcome_view:
-            return 'welcome'
-        elif current == self.acquisition_view:
-            return 'acquisition'
-        elif current == self.analysis_view:
-            return 'analysis'
-        else:
-            return 'unknown'
+        return self.view_manager.current_view
     
     def closeEvent(self, event):
         """Gère la fermeture de l'application"""
@@ -410,9 +460,10 @@ class MainWindow(QMainWindow):
                 QMessageBox.Yes | QMessageBox.No,
                 QMessageBox.No
             )
-            
-            if reply == QMessageBox.No:
+
+            if reply == QMessageBox.Yes:
+                event.accept()
+            else:
                 event.ignore()
-                return
-        
-        event.accept()
+        else:
+            event.accept()

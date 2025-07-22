@@ -7,18 +7,11 @@ Ce module contient les utilitaires pour la génération de documentation,
 le monitoring et les outils de développement pour CHNeoWave.
 """
 
-from .doc_generator import (
-    CHNeoWaveDocGenerator,
-    ModuleInfo,
-    APIDocumentation,
-    LabConfiguration,
-)
+# Import depuis core au lieu de utils (après nettoyage des doublons)
+from ..core.logging_config import setup_logging
 
 __all__ = [
-    "CHNeoWaveDocGenerator",
-    "ModuleInfo",
-    "APIDocumentation",
-    "LabConfiguration",
+    "setup_logging",
 ]
 
 __version__ = "1.0.0"

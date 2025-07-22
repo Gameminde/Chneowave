@@ -10,9 +10,9 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 
 try:
-    from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+    from PySide6.QtCore import QThread, Signal, QTimer
 except ImportError:
-    from PyQt6.QtCore import QThread, pyqtSignal, QTimer
+    from PySide6.QtCore import QThread, Signal, QTimer
 
 import numpy as np
 
@@ -60,10 +60,10 @@ class OptimizedProcessingWorker(QThread):
     """
     
     # Signaux PyQt
-    newSpectra = pyqtSignal(np.ndarray)  # Nouveau spectre FFT
-    newStats = pyqtSignal(dict)  # Nouvelles statistiques Goda
-    performanceStats = pyqtSignal(dict)  # Métriques de performance
-    processingError = pyqtSignal(str)  # Erreurs de traitement
+    newSpectra = Signal(np.ndarray)  # Nouveau spectre FFT
+    newStats = Signal(dict)  # Nouvelles statistiques Goda
+    performanceStats = Signal(dict)  # Métriques de performance
+    processingError = Signal(str)  # Erreurs de traitement
     
     def __init__(self, parent, config: Optional[Any] = None):
         """Initialise le worker optimisé.

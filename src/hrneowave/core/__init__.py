@@ -16,10 +16,7 @@ try:
     from .async_acquisition import *
 except ImportError:
     pass
-try:
-    from .buffer_config import UnifiedBufferConfig, BufferConfig, CircularBufferConfig
-except ImportError:
-    pass
+
 try:
     from .signal_bus import SignalBus, ErrorBus, get_signal_bus, get_error_bus
 except ImportError:

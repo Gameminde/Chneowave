@@ -1,0 +1,21 @@
+# -*- coding: utf-8 -*-
+"""
+Thème CHNeoWave - En cours de reconstruction
+"""
+
+from PyQt5.QtCore import QObject
+
+class CHNeoWaveTheme(QObject):
+    """
+    Thème CHNeoWave - Interface en reconstruction
+    """
+    
+    @classmethod
+    def get_stylesheet(cls):
+        """
+        Feuille de style temporaire - En cours de reconstruction
+        """
+        # Import des classes Qt seulement quand nécessaire
+        from PyQt5.QtGui import QPalette, QColor
+        from PyQt5.QtWidgets import QApplication
+        return ""

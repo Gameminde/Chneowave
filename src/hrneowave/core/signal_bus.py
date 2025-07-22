@@ -15,10 +15,22 @@ import numpy as np
 from typing import Dict, Any, Optional, Callable, List
 from dataclasses import dataclass
 from enum import Enum
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer
-from PyQt5.QtWidgets import QApplication
 import time
 import threading
+
+# Variables globales pour les imports Qt conditionnels
+QObject = None
+Signal = None
+QTimer = None
+QApplication = None
+
+def _ensure_qt_imports():
+    """Importe les modules Qt de manière conditionnelle"""
+    global QObject, Signal, QTimer, QApplication
+    
+    if QObject is None:
+        from PySide6.QtCore import QObject, Signal, QTimer
+        from PySide6.QtWidgets import QApplication
 
 
 class ErrorLevel(Enum):
@@ -184,6 +196,7 @@ class SignalBus(QObject):
     # Signaux d'interface
     viewChangeRequested = pyqtSignal(str)  # nom de la vue
     configurationChanged = pyqtSignal(dict)  # nouvelle configuration
+    analysisRequested = pyqtSignal(dict)  # Demande d'analyse avec les données
     
     def __init__(self):
         super().__init__()

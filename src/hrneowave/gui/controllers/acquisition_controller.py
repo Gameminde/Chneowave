@@ -15,8 +15,27 @@ from enum import Enum
 import json
 import os
 import logging
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer, QThread
-from PyQt5.QtWidgets import QApplication
+
+# Import conditionnel des modules Qt
+def _ensure_qt_imports():
+    """Assure que les modules Qt sont importés correctement"""
+    global QObject, Signal, QTimer, QThread, QApplication
+    try:
+        from PySide6.QtCore import QObject, Signal, QTimer, QThread
+        from PySide6.QtWidgets import QApplication
+        return True
+    except ImportError:
+        try:
+            from PyQt6.QtCore import QObject, pyqtSignal as Signal, QTimer, QThread
+            from PyQt6.QtWidgets import QApplication
+            return True
+        except ImportError:
+            try:
+                from PyQt5.QtCore import QObject, pyqtSignal as Signal, QTimer, QThread
+                from PyQt5.QtWidgets import QApplication
+                return True
+            except ImportError:
+                return False
 
 # Import du nouveau système de signaux unifié
 try:
@@ -26,13 +45,13 @@ try:
     UNIFIED_SIGNALS_AVAILABLE = True
 except ImportError:
     UNIFIED_SIGNALS_AVAILABLE = False
-    print("⚠️ Système de signaux unifié non disponible, utilisation des signaux legacy")
+    print("Système de signaux unifié non disponible, utilisation des signaux legacy")
 
 # Tentative d'import du circular_buffer
 try:
     from hrneowave.core.circular_buffer import create_circular_buffer, BufferConfig
 except ImportError:
-    print("⚠️ Module circular_buffer non trouvé, utilisation d'un buffer simple")
+    print("Module circular_buffer non trouvé, utilisation d'un buffer simple")
     
     # Définition de BufferConfig en fallback
     @dataclass
@@ -208,20 +227,34 @@ class AcquisitionController(QObject):
             self.error_bus = None
     
     def _init_backend(self):
-        """Initialise le backend d'acquisition selon le mode"""
+        """Initialise le backend d'acquisition selon le mode avec autodétection"""
         try:
             if self.config.mode == AcquisitionMode.SIMULATE:
                 self._backend = SimulateBackend(self.config)
             elif self.config.mode == AcquisitionMode.NI_DAQ:
-                self._backend = NIDAQBackend(self.config)
+                # Essayer d'abord le nouveau backend NI-DAQmx
+                try:
+                    from hrneowave.hw.ni_daqmx_backend import NIDAQmxBackend
+                    self._backend = NIDAQmxBackend(self.config)
+                    print("Backend NI-DAQmx hardware chargé")
+                except ImportError:
+                    print("Backend NI-DAQmx hardware non disponible, utilisation du fallback")
+                    self._backend = NIDAQBackend(self.config)
             elif self.config.mode == AcquisitionMode.IOTECH:
-                self._backend = IOTechBackend(self.config)
+                # Essayer d'abord le nouveau backend IOtech
+                try:
+                    from hrneowave.hw.iotech_backend import IOtechBackend
+                    self._backend = IOtechBackend(self.config)
+                    print("Backend IOtech hardware chargé")
+                except ImportError:
+                    print("Backend IOtech hardware non disponible, utilisation du fallback")
+                    self._backend = IOTechBackend(self.config)
             elif self.config.mode == AcquisitionMode.ARDUINO:
                 self._backend = ArduinoBackend(self.config)
             else:
                 raise ValueError(f"Mode d'acquisition non supporté: {self.config.mode}")
         except Exception as e:
-            print(f"⚠️ Erreur initialisation backend {self.config.mode}: {e}")
+            print(f"Erreur initialisation backend {self.config.mode}: {e}")
             # Fallback sur simulation
             self._backend = SimulateBackend(self.config)
     
@@ -681,10 +714,10 @@ class NIDAQBackend(AcquisitionBackend):
             return True
             
         except ImportError:
-            print("⚠️ Module nidaqmx non disponible, fallback sur simulation")
+            print("Module nidaqmx non disponible, fallback sur simulation")
             return False
         except Exception as e:
-            print(f"⚠️ Erreur NI-DAQ: {e}")
+            print(f"Erreur NI-DAQ: {e}")
             return False
     
     def disconnect(self):
@@ -729,10 +762,10 @@ class IOTechBackend(AcquisitionBackend):
         try:
             # Placeholder pour l'initialisation IOTech
             # À implémenter selon l'API IOTech spécifique
-            print("⚠️ Backend IOTech non encore implémenté, fallback sur simulation")
+            print("Backend IOTech non encore implémenté, fallback sur simulation")
             return False
         except Exception as e:
-            print(f"⚠️ Erreur IOTech: {e}")
+            print(f"Erreur IOTech: {e}")
             return False
     
     def disconnect(self):
@@ -792,10 +825,10 @@ class ArduinoBackend(AcquisitionBackend):
             return True
             
         except ImportError:
-            print("⚠️ Module pyserial non disponible")
+            print("Module pyserial non disponible")
             return False
         except Exception as e:
-            print(f"⚠️ Erreur Arduino: {e}")
+            print(f"Erreur Arduino: {e}")
             return False
     
     def disconnect(self):

@@ -1,0 +1,30 @@
+{
+  "timestamp": "2025-07-20T10:02:24.929661",
+  "version": "CHNeoWave v1.1.0-beta",
+  "total_tests": 3,
+  "passed": 0,
+  "failed": 3,
+  "errors": 0,
+  "timeouts": 0,
+  "total_duration": 3.094196319580078,
+  "results": {
+    "test_launch_gui.py": {
+      "status": "failed",
+      "duration": 1.9952855110168457,
+      "output": "",
+      "error": "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]\n__main__.py: error: unrecognized arguments: --timeout=30\n  inifile: C:\\Users\\LEM\\Desktop\\chneowave\\pyproject.toml\n  rootdir: C:\\Users\\LEM\\Desktop\\chneowave\n\n"
+    },
+    "test_export_hdf5.py": {
+      "status": "failed",
+      "duration": 0.5490036010742188,
+      "output": "",
+      "error": "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]\n__main__.py: error: unrecognized arguments: --timeout=45\n  inifile: C:\\Users\\LEM\\Desktop\\chneowave\\pyproject.toml\n  rootdir: C:\\Users\\LEM\\Desktop\\chneowave\n\n"
+    },
+    "test_calib_pdf.py": {
+      "status": "failed",
+      "duration": 0.5499072074890137,
+      "output": "",
+      "error": "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]\n__main__.py: error: unrecognized arguments: --timeout=20\n  inifile: C:\\Users\\LEM\\Desktop\\chneowave\\pyproject.toml\n  rootdir: C:\\Users\\LEM\\Desktop\\chneowave\n\n"
+    }
+  }
+}

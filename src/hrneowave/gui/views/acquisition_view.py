@@ -1,892 +1,607 @@
-# acquisition_view.py - Vue d'acquisition temps réel simplifiée
-import sys
-import os
-import time
+# -*- coding: utf-8 -*-
+"""
+Vue d'acquisition CHNeoWave
+Étape 3 : Acquisition des données
+"""
+
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, QPushButton,
+    QSplitter, QDockWidget, QTextEdit, QTableWidget, QTableWidgetItem,
+    QGroupBox, QProgressBar, QSpinBox, QDoubleSpinBox, QCheckBox, QComboBox
+)
+from PySide6.QtCore import Signal, Qt, QTimer
+from PySide6.QtGui import QFont, QColor
 import numpy as np
 from datetime import datetime
-from typing import Dict, Any, Optional, List
 
-from PyQt5.QtWidgets import (
-    QWidget, QLabel, QVBoxLayout, QHBoxLayout, QPushButton, QSpinBox, 
-    QDoubleSpinBox, QGroupBox, QFormLayout, QSplitter, QSizePolicy,
-    QComboBox, QCheckBox, QScrollArea, QApplication
-)
-from PyQt5.QtCore import Qt, QTimer, pyqtSlot, pyqtSignal
-from PyQt5.QtGui import QFont
-
-import pyqtgraph as pg
-from pyqtgraph import PlotWidget, mkPen
-
-# P0: Import des signaux unifiés
-from ...core.signal_bus import get_signal_bus, get_error_bus
-
-class GraphManager:
-    """Gestionnaire des graphiques PyQtGraph pour performance optimale
-    
-    Gère 3 graphiques :
-    - Signal A : sonde individuelle sélectionnable
-    - Signal B : autre sonde individuelle  
-    - Vue globale : N sondes avec checkboxes
-    """
-    
-    def __init__(self, n_sondes: int = 4):
-        self.n_sondes = n_sondes
-        self.colors = ['#FF5722', '#2196F3', '#4CAF50', '#FF9800', 
-                      '#9C27B0', '#607D8B', '#795548', '#E91E63']
-        
-        # Graphiques
-        self.signal_a_plot = None
-        self.signal_b_plot = None
-        self.global_plot = None
-        
-        # Courbes actives
-        self.signal_a_curve = None
-        self.signal_b_curve = None
-        self.global_curves = {}  # {sonde_id: curve}
-        
-        # Sélections
-        self.selected_probe_a = 0
-        self.selected_probe_b = 1
-        self.enabled_probes = set()  # Sondes actives pour vue globale
-        
-        # Cache données
-        self.current_time = None
-        self.current_signals = None
-        
-    def setup_plots(self, signal_a_widget: PlotWidget, signal_b_widget: PlotWidget, 
-                   global_widget: PlotWidget):
-        """Configure les 3 graphiques"""
-        self.signal_a_plot = signal_a_widget
-        self.signal_b_plot = signal_b_widget
-        self.global_plot = global_widget
-        
-        # Configuration commune
-        for plot in [self.signal_a_plot, self.signal_b_plot, self.global_plot]:
-            plot.setLabel('left', 'Amplitude', units='m')
-            plot.setLabel('bottom', 'Temps', units='s')
-            plot.showGrid(x=True, y=True, alpha=0.3)
-            plot.setBackground('#1e1e1e')
-            
-        # Titres
-        self.signal_a_plot.setTitle("Signal A - Sonde 1")
-        self.signal_b_plot.setTitle("Signal B - Sonde 2")
-        self.global_plot.setTitle("Vue Globale")
-        
-        # Courbes initiales
-        self._create_initial_curves()
-        
-    def _create_initial_curves(self):
-        """Crée les courbes initiales"""
-        # Courbes initiales
-        self.signal_a_curve = self.signal_a_plot.plot(
-            pen=pg.mkPen(self.colors[0], width=2), name=f"Sonde {self.selected_probe_a + 1}")
-            
-        # Signal B  
-        self.signal_b_curve = self.signal_b_plot.plot(
-            pen=pg.mkPen(self.colors[1], width=2), name=f"Sonde {self.selected_probe_b + 1}")
-            
-    def set_probe_a(self, probe_id: int):
-        """Change la sonde pour Signal A"""
-        if 0 <= probe_id < self.n_sondes:
-            self.selected_probe_a = probe_id
-            self.signal_a_plot.setTitle(f"Signal A - Sonde {probe_id + 1}")
-            if self.signal_a_curve:
-                self.signal_a_curve.setPen(pg.mkPen(self.colors[probe_id % len(self.colors)], width=2))
-                
-    def set_probe_b(self, probe_id: int):
-        """Change la sonde pour Signal B"""
-        if 0 <= probe_id < self.n_sondes:
-            self.selected_probe_b = probe_id
-            self.signal_b_plot.setTitle(f"Signal B - Sonde {probe_id + 1}")
-            if self.signal_b_curve:
-                self.signal_b_curve.setPen(pg.mkPen(self.colors[probe_id % len(self.colors)], width=2))
-                
-    def toggle_global_probe(self, probe_id: int, enabled: bool):
-        """Active/désactive une sonde dans la vue globale"""
-        if enabled and probe_id not in self.global_curves:
-            # Ajouter courbe
-            color = self.colors[probe_id % len(self.colors)]
-            curve = self.global_plot.plot(pen=pg.mkPen(color, width=1.5), name=f"Sonde {probe_id + 1}")
-            self.global_curves[probe_id] = curve
-            self.enabled_probes.add(probe_id)
-            
-        elif not enabled and probe_id in self.global_curves:
-            # Supprimer courbe
-            self.global_plot.removeItem(self.global_curves[probe_id])
-            del self.global_curves[probe_id]
-            self.enabled_probes.discard(probe_id)
-            
-    def update_data(self, time_data, signals_data):
-        """Met à jour toutes les courbes avec nouvelles données
-        
-        Args:
-            time_data: array des temps
-            signals_data: liste des signaux [signal_sonde_0, signal_sonde_1, ...]
-        """
-        self.current_time = time_data
-        self.current_signals = signals_data
-        
-        # Signal A
-        if self.signal_a_curve and self.selected_probe_a < len(signals_data):
-            self.signal_a_curve.setData(time_data, signals_data[self.selected_probe_a])
-        
-        # Signal B
-        if self.signal_b_curve and self.selected_probe_b < len(signals_data):
-            self.signal_b_curve.setData(time_data, signals_data[self.selected_probe_b])
-        
-        # Vue globale
-        for probe_id in self.enabled_probes:
-            if probe_id < len(signals_data) and probe_id in self.global_curves:
-                self.global_curves[probe_id].setData(time_data, signals_data[probe_id])
-                
-    def initialize_curves(self):
-        """Initialise les courbes sur chaque graphique"""
-        if not all([self.signal_a_plot, self.signal_b_plot, self.global_plot]):
-            return
-        
-        # Signal A
-        self.signal_a_curve = self.signal_a_plot.plot(
-            pen=mkPen(color=self.colors[self.selected_probe_a], width=2),
-            name=f'Sonde {self.selected_probe_a + 1}'
-        )
-        
-        # Signal B
-        self.signal_b_curve = self.signal_b_plot.plot(
-            pen=mkPen(color=self.colors[self.selected_probe_b], width=2),
-            name=f'Sonde {self.selected_probe_b + 1}'
-        )
-        
-        # Vue globale - toutes les sondes activées par défaut
-        for i in range(self.n_sondes):
-            self.toggle_global_probe(i, True)
-    
-    def update_signal_a(self, new_index):
-        """Change la sonde affichée sur Signal A"""
-        if new_index == self.selected_probe_a or new_index >= self.n_sondes:
-            return
-        
-        self.selected_probe_a = new_index
-        
-        # Recréer la courbe avec nouvelle couleur
-        if self.signal_a_plot:
-            self.signal_a_plot.clear()
-            self.signal_a_curve = self.signal_a_plot.plot(
-                pen=mkPen(color=self.colors[new_index], width=2),
-                name=f'Sonde {new_index + 1}'
-            )
-            
-            # Réappliquer données si disponibles
-            if self.current_time is not None and self.current_signals:
-                if new_index < len(self.current_signals):
-                    self.signal_a_curve.setData(self.current_time, self.current_signals[new_index])
-    
-    def update_signal_b(self, new_index):
-        """Change la sonde affichée sur Signal B"""
-        if new_index == self.selected_probe_b or new_index >= self.n_sondes:
-            return
-        
-        self.selected_probe_b = new_index
-        
-        # Recréer la courbe avec nouvelle couleur
-        if self.signal_b_plot:
-            self.signal_b_plot.clear()
-            self.signal_b_curve = self.signal_b_plot.plot(
-                pen=mkPen(color=self.colors[new_index], width=2),
-                name=f'Sonde {new_index + 1}'
-            )
-            
-            # Réappliquer données si disponibles
-            if self.current_time is not None and self.current_signals:
-                if new_index < len(self.current_signals):
-                    self.signal_b_curve.setData(self.current_time, self.current_signals[new_index])
-    
-    def update_global_view(self, selected_indices):
-        """Met à jour les sondes affichées dans la vue globale"""
-        current_enabled = self.enabled_probes.copy()
-        
-        # Désactiver les sondes non sélectionnées
-        for probe_id in current_enabled:
-            if probe_id not in selected_indices:
-                self.toggle_global_probe(probe_id, False)
-        
-        # Activer les nouvelles sondes sélectionnées
-        for probe_id in selected_indices:
-            if probe_id not in current_enabled:
-                self.toggle_global_probe(probe_id, True)
-    
-    def clear_all(self):
-        """Efface toutes les données"""
-        if self.signal_a_curve:
-            self.signal_a_curve.setData([], [])
-        if self.signal_b_curve:
-            self.signal_b_curve.setData([], [])
-        for curve in self.global_curves.values():
-            curve.setData([], [])
-
-try:
-    from ..controllers.acquisition_controller import AcquisitionController
-except ImportError:
-    print("⚠️ AcquisitionController non disponible")
-    AcquisitionController = None
+# Utilisation de l'adaptateur matplotlib pour compatibilité PySide6
+from ..components.matplotlib_adapter import pg
 
 class AcquisitionView(QWidget):
-    """Vue d'acquisition temps réel - Interface épurée pour l'acquisition
-    
-    Fonctionnalités:
-    - Graphiques temps réel uniquement (PyQtGraph)
-    - Stats live minimal : Hmax, Hmean, Tmean (zone 200px à droite)
-    - Voyants sondes + compteur échantillons
-    - Boutons Start, Stop, Export
-    - QSplitter horizontal : contrôle (30%) / graphe (70%)
-    - Taille minimale 1024×640, responsive jusqu'à 1280×720
+    """
+    Vue d'acquisition des données
+    Respecte le principe d'isolation : UNIQUEMENT l'acquisition
     """
     
-    # Signaux pour communication avec controller
-    acquisitionStarted = pyqtSignal()
-    acquisitionStopped = pyqtSignal()
-    dataExported = pyqtSignal(str)  # Chemin fichier exporté
-    analysisRequested = pyqtSignal(str)  # Demande ouverture vue analyse
-    
-    def __init__(self, config: Dict[str, Any], acquisition_controller: Optional[AcquisitionController] = None):
-        super().__init__()
-        self.config = config
-        self.acquisition_controller = acquisition_controller
-        
-        # Configuration acquisition
-        self.n_sondes = config.get('n_channels', 4)
-        self.sample_rate = config.get('sample_rate', 32.0)
-        self.duration = config.get('duration', 300)
-        self.save_folder = config.get('save_folder', './data')
-        
-        # État acquisition
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        # Signal émis lorsque la session d'acquisition est terminée
+        self.acquisitionFinished = Signal(dict)
         self.is_acquiring = False
+        self.is_paused = False
+        self.acquisition_data = []
         self.start_time = None
-        self.total_samples = 0
-        self.current_data = [[] for _ in range(self.n_sondes)]
-        
-        # Stats live
-        self.live_stats = {
-            'hmax': 0.0,
-            'hmean': 0.0,
-            'tmean': 0.0
-        }
-        
-        # GraphManager pour gestion optimisée des graphiques
-        self.graph_manager = GraphManager(self.n_sondes)
-        
-        # Timer mise à jour
-        self.update_timer = QTimer()
-        self.update_timer.timeout.connect(self._update_live_display)
-        
-        # P0: Connexion aux signaux unifiés
-        self.signal_bus = get_signal_bus()
-        self.error_bus = get_error_bus()
-        self._connect_unified_signals()
-        
-        self._init_ui()
-        self._setup_pyqtgraph()
-        
-    def _init_ui(self):
-        """Initialise l'interface utilisateur épurée"""
-        self.setWindowTitle("HRNeoWave - Acquisition Temps Réel")
-        
-        # Taille minimale selon spécifications
-        self.setMinimumSize(1024, 640)
-        self.resize(1280, 720)
-        
-        self._create_layout()
-        self._apply_acquisition_theme()
-        
-    def _create_layout(self):
-        """Crée le layout principal avec QSplitter horizontal 30%/70%"""
+        self.setupUI()
+        self.setupTimers()
+        self.connectSignals()
+    
+    def setupUI(self):
+        """
+        Configuration de l'interface utilisateur
+        """
+        # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(4, 4, 4, 4)
-        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
         
-        # QSplitter horizontal principal
+        # Titre principal
+        title_label = QLabel("Étape 3 : Acquisition des Données")
+        title_font = QFont()
+        title_font.setPointSize(16)
+        title_font.setBold(True)
+        title_label.setFont(title_font)
+        title_label.setStyleSheet("color: #2980b9; margin-bottom: 10px;")
+        main_layout.addWidget(title_label)
+        
+        # Splitter principal pour les graphiques
         self.main_splitter = QSplitter(Qt.Horizontal)
-        self.main_splitter.setHandleWidth(2)
-        self.main_splitter.setChildrenCollapsible(False)
         
-        # Panneau contrôle (30%)
-        control_panel = self._create_control_panel()
-        control_panel.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
+        # Zone des graphiques (côté gauche)
+        graphs_widget = QWidget()
+        graphs_layout = QVBoxLayout(graphs_widget)
+        graphs_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Zone graphique (70%)
-        graphics_area = self._create_graphics_area()
-        graphics_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        
-        self.main_splitter.addWidget(control_panel)
-        self.main_splitter.addWidget(graphics_area)
-        
-        # Proportions 30% / 70%
-        self.main_splitter.setStretchFactor(0, 30)
-        self.main_splitter.setStretchFactor(1, 70)
-        self.main_splitter.setSizes([307, 717])  # Pour 1024px largeur
-        
-        main_layout.addWidget(self.main_splitter)
-        
-    def _create_control_panel(self) -> QWidget:
-        """Crée le panneau de contrôle épuré"""
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(8, 8, 8, 8)
-        layout.setSpacing(8)
-        
-        # Contrôles principaux
-        layout.addWidget(self._create_main_controls())
-        
-        # Sélecteurs de sondes
-        layout.addWidget(self._create_probe_selectors())
-        
-        # Configuration rapide
-        layout.addWidget(self._create_quick_config())
-        
-        # Voyants sondes
-        layout.addWidget(self._create_probe_status())
-        
-        # Compteur échantillons
-        layout.addWidget(self._create_sample_counter())
-        
-        layout.addStretch()
-        return panel
-        
-    def _create_main_controls(self) -> QGroupBox:
-        """Crée les contrôles Start/Stop/Export"""
-        group = QGroupBox("Contrôles")
-        layout = QVBoxLayout(group)
-        
-        # Boutons Start/Stop
-        button_layout = QHBoxLayout()
-        
-        self.start_button = QPushButton("Start")
-        self.start_button.setMinimumHeight(40)
-        self.start_button.clicked.connect(self._start_acquisition)
-        # Désactivé tant que projet non créé
-        self.start_button.setEnabled(False)
-        
-        self.stop_button = QPushButton("Stop")
-        self.stop_button.setMinimumHeight(40)
-        self.stop_button.setEnabled(False)
-        self.stop_button.clicked.connect(self._stop_acquisition)
-        
-        button_layout.addWidget(self.start_button)
-        button_layout.addWidget(self.stop_button)
-        layout.addLayout(button_layout)
-        
-        # Bouton Export
-        self.export_button = QPushButton("Export")
-        self.export_button.setMinimumHeight(30)
-        # Désactivé tant que projet non créé
-        self.export_button.setEnabled(False)
-        self.export_button.clicked.connect(self._export_data)
-        layout.addWidget(self.export_button)
-        
-        # Alias pour compatibilité avec MainWindow
-        self.btn_start = self.start_button
-        self.btn_export = self.export_button
-        
-        return group
-        
-    def _create_quick_config(self) -> QGroupBox:
-        """Configuration rapide durée/fréquence"""
-        group = QGroupBox("Configuration")
-        layout = QFormLayout(group)
-        
-        # Durée
-        self.duration_spinbox = QSpinBox()
-        self.duration_spinbox.setRange(10, 3600)
-        self.duration_spinbox.setValue(self.duration)
-        self.duration_spinbox.setSuffix(" s")
-        layout.addRow("Durée:", self.duration_spinbox)
-        
-        # Fréquence
-        self.sample_rate_spinbox = QDoubleSpinBox()
-        self.sample_rate_spinbox.setRange(1.0, 100.0)
-        self.sample_rate_spinbox.setValue(self.sample_rate)
-        self.sample_rate_spinbox.setSuffix(" Hz")
-        layout.addRow("Fréq.:", self.sample_rate_spinbox)
-        
-        return group
-        
-    def _create_probe_selectors(self) -> QGroupBox:
-        """Crée les sélecteurs de sondes pour les graphiques"""
-        group = QGroupBox("Sélection Sondes")
-        layout = QVBoxLayout(group)
-        
-        # Sonde A
-        sonde_a_layout = QHBoxLayout()
-        sonde_a_layout.addWidget(QLabel("Signal A:"))
-        self.sonde_a_combo = QComboBox()
-        self.sonde_a_combo.addItems([f"Sonde {i+1}" for i in range(self.n_sondes)])
-        self.sonde_a_combo.currentIndexChanged.connect(self._on_sonde_a_changed)
-        sonde_a_layout.addWidget(self.sonde_a_combo)
-        layout.addLayout(sonde_a_layout)
-        
-        # Sonde B
-        sonde_b_layout = QHBoxLayout()
-        sonde_b_layout.addWidget(QLabel("Signal B:"))
-        self.sonde_b_combo = QComboBox()
-        self.sonde_b_combo.addItems([f"Sonde {i+1}" for i in range(self.n_sondes)])
-        self.sonde_b_combo.setCurrentIndex(1 if self.n_sondes > 1 else 0)
-        self.sonde_b_combo.currentIndexChanged.connect(self._on_sonde_b_changed)
-        sonde_b_layout.addWidget(self.sonde_b_combo)
-        layout.addLayout(sonde_b_layout)
-        
-        # Vue globale - checkboxes dans scroll area
-        global_label = QLabel("Vue Globale:")
-        layout.addWidget(global_label)
-        
-        scroll_area = QScrollArea()
-        scroll_area.setMaximumHeight(120)
-        scroll_widget = QWidget()
-        scroll_layout = QVBoxLayout(scroll_widget)
-        
-        self.global_checkboxes = []
-        for i in range(self.n_sondes):
-            checkbox = QCheckBox(f"Sonde {i+1}")
-            checkbox.setChecked(True)  # Toutes cochées par défaut
-            checkbox.stateChanged.connect(self._on_global_selection_changed)
-            self.global_checkboxes.append(checkbox)
-            scroll_layout.addWidget(checkbox)
-        
-        scroll_area.setWidget(scroll_widget)
-        layout.addWidget(scroll_area)
-        
-        return group
-        
-    def _create_probe_status(self) -> QGroupBox:
-        """Voyants état des sondes"""
-        group = QGroupBox("Sondes")
-        layout = QVBoxLayout(group)
-        
-        self.probe_labels = []
-        for i in range(self.n_sondes):
-            label = QLabel(f"Sonde {i+1}: ⚫")
-            label.setStyleSheet("color: #666;")
-            self.probe_labels.append(label)
-            layout.addWidget(label)
-            
-        return group
-        
-    def _create_sample_counter(self) -> QGroupBox:
-        """Compteur d'échantillons"""
-        group = QGroupBox("Échantillons")
-        layout = QFormLayout(group)
-        
-        self.samples_label = QLabel("0")
-        self.duration_label = QLabel("00:00")
-        
-        layout.addRow("Total:", self.samples_label)
-        layout.addRow("Temps:", self.duration_label)
-        
-        return group
-        
-    def _create_graphics_area(self) -> QWidget:
-        """Zone graphique avec 3 graphiques en splitter vertical"""
         # Splitter vertical pour les 3 graphiques
-        splitter = QSplitter(Qt.Vertical)
+        graphs_splitter = QSplitter(Qt.Vertical)
         
-        # Graphique Signal A
-        self.signal_a_plot = PlotWidget(title="Signal A")
-        self.signal_a_plot.setLabel('left', 'Amplitude', units='m')
-        self.signal_a_plot.setLabel('bottom', 'Temps', units='s')
-        self.signal_a_plot.showGrid(x=True, y=True)
-        splitter.addWidget(self.signal_a_plot)
+        # Graphique 1 : Séries temporelles
+        self.time_series_plot = pg.PlotWidget()
+        self.time_series_plot.setLabel('left', 'Amplitude (mm)')
+        self.time_series_plot.setLabel('bottom', 'Temps (s)')
+        self.time_series_plot.setTitle('Séries Temporelles')
+        self.time_series_plot.setMinimumHeight(200)
+        graphs_splitter.addWidget(self.time_series_plot)
         
-        # Graphique Signal B
-        self.signal_b_plot = PlotWidget(title="Signal B")
-        self.signal_b_plot.setLabel('left', 'Amplitude', units='m')
-        self.signal_b_plot.setLabel('bottom', 'Temps', units='s')
-        self.signal_b_plot.showGrid(x=True, y=True)
-        splitter.addWidget(self.signal_b_plot)
+        # Graphique 2 : Spectres de fréquence
+        self.frequency_plot = pg.PlotWidget()
+        self.frequency_plot.setLabel('left', 'Amplitude')
+        self.frequency_plot.setLabel('bottom', 'Fréquence (Hz)')
+        self.frequency_plot.setTitle('Spectres de Fréquence')
+        self.frequency_plot.setMinimumHeight(200)
+        graphs_splitter.addWidget(self.frequency_plot)
         
-        # Graphique Vue Globale
-        self.global_plot = PlotWidget(title="Vue Globale")
-        self.global_plot.setLabel('left', 'Amplitude', units='m')
-        self.global_plot.setLabel('bottom', 'Temps', units='s')
-        self.global_plot.showGrid(x=True, y=True)
-        splitter.addWidget(self.global_plot)
+        # Graphique 3 : Analyse en temps réel
+        self.realtime_plot = pg.PlotWidget()
+        self.realtime_plot.setLabel('left', 'Hauteur (mm)')
+        self.realtime_plot.setLabel('bottom', 'Temps (s)')
+        self.realtime_plot.setTitle('Acquisition en Temps Réel')
+        self.realtime_plot.setMinimumHeight(200)
+        graphs_splitter.addWidget(self.realtime_plot)
         
-        # Répartition 33/33/34%
-        splitter.setSizes([330, 330, 340])
+        graphs_layout.addWidget(graphs_splitter)
+        self.main_splitter.addWidget(graphs_widget)
         
-        # Configuration du GraphManager
-        self.graph_manager.setup_plots(self.signal_a_plot, self.signal_b_plot, self.global_plot)
+        # Zone des docks (côté droit)
+        docks_widget = QWidget()
+        docks_layout = QVBoxLayout(docks_widget)
+        docks_layout.setContentsMargins(10, 0, 0, 0)
         
-        # Widget conteneur avec stats
-        container = QWidget()
-        layout = QHBoxLayout(container)
-        layout.setContentsMargins(4, 4, 4, 4)
-        layout.setSpacing(4)
+        # Dock 1 : Infos Essai
+        self.createTrialInfoDock(docks_layout)
         
-        # Zone stats live (200px)
-        stats_panel = self._create_live_stats_panel()
-        stats_panel.setFixedWidth(200)
+        # Dock 2 : État Capteurs
+        self.createSensorStatusDock(docks_layout)
         
-        layout.addWidget(splitter)
-        layout.addWidget(stats_panel)
+        # Panneau de contrôle
+        self.createControlPanel(docks_layout)
         
-        return container
+        docks_widget.setMaximumWidth(350)
+        self.main_splitter.addWidget(docks_widget)
         
-    def _create_live_stats_panel(self) -> QWidget:
-        """Panneau stats live minimal : Hmax, Hmean, Tmean"""
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-        layout.setContentsMargins(8, 8, 8, 8)
-        
-        # Titre
-        title = QLabel("📊 Stats Live")
-        title.setStyleSheet("font-weight: bold; color: #2196F3; font-size: 14px;")
-        layout.addWidget(title)
-        
-        # Stats
-        stats_group = QGroupBox()
-        stats_layout = QFormLayout(stats_group)
-        
-        self.hmax_label = QLabel("-- m")
-        self.hmean_label = QLabel("-- m")
-        self.tmean_label = QLabel("-- s")
-        
-        stats_layout.addRow("Hmax:", self.hmax_label)
-        stats_layout.addRow("Hmean:", self.hmean_label)
-        stats_layout.addRow("Tmean:", self.tmean_label)
-        
-        layout.addWidget(stats_group)
-        layout.addStretch()
-        
-        return panel
+        # Configuration du splitter
+        self.main_splitter.setSizes([800, 350])
+        main_layout.addWidget(self.main_splitter)
     
-    def _on_sonde_a_changed(self, index):
-        """Callback changement sonde A"""
-        self.graph_manager.update_signal_a(index)
-    
-    def _on_sonde_b_changed(self, index):
-        """Callback changement sonde B"""
-        self.graph_manager.update_signal_b(index)
-    
-    def _on_global_selection_changed(self):
-        """Callback changement sélection vue globale"""
-        selected_probes = []
-        for i, checkbox in enumerate(self.global_checkboxes):
-            if checkbox.isChecked():
-                selected_probes.append(i)
-        self.graph_manager.update_global_view(selected_probes)
+    def createTrialInfoDock(self, parent_layout):
+        """
+        Création du dock d'informations d'essai
+        """
+        info_group = QGroupBox("Informations Essai")
+        info_layout = QVBoxLayout(info_group)
         
-    def _setup_pyqtgraph(self):
-        """Configuration PyQtGraph pour performance optimale"""
-        pg.setConfigOptions(
-            antialias=False,  # Performance
-            useOpenGL=True,   # Accélération GPU
-            enableExperimental=True
+        # Informations de base
+        self.trial_info_text = QTextEdit()
+        self.trial_info_text.setMaximumHeight(120)
+        self.trial_info_text.setReadOnly(True)
+        self.trial_info_text.setPlainText(
+            "Projet: Projet Test\n"
+            "Date: " + datetime.now().strftime("%d/%m/%Y %H:%M") + "\n"
+            "Capteurs: 4 actifs\n"
+            "Fréquence: 100 Hz\n"
+            "Durée prévue: 300 s"
         )
+        info_layout.addWidget(self.trial_info_text)
         
-        # Initialisation des courbes via GraphManager
-        self.graph_manager.initialize_curves()
+        # Barre de progression
+        progress_label = QLabel("Progression:")
+        info_layout.addWidget(progress_label)
+        
+        self.acquisition_progress = QProgressBar()
+        self.acquisition_progress.setRange(0, 100)
+        self.acquisition_progress.setValue(0)
+        info_layout.addWidget(self.acquisition_progress)
+        
+        # Temps écoulé
+        self.elapsed_time_label = QLabel("Temps écoulé: 00:00:00")
+        info_layout.addWidget(self.elapsed_time_label)
+        
+        parent_layout.addWidget(info_group)
+    
+    def createSensorStatusDock(self, parent_layout):
+        """
+        Création du dock d'état des capteurs
+        """
+        sensor_group = QGroupBox("État des Capteurs")
+        sensor_layout = QVBoxLayout(sensor_group)
+        
+        # Tableau des capteurs
+        self.sensor_status_table = QTableWidget(4, 2)
+        self.sensor_status_table.setHorizontalHeaderLabels(["Capteur", "État"])
+        self.sensor_status_table.setMaximumHeight(150)
+        
+        # Remplissage du tableau
+        for i in range(4):
+            # Nom du capteur
+            sensor_item = QTableWidgetItem(f"Capteur {i+1}")
+            sensor_item.setFlags(Qt.ItemIsEnabled)
+            self.sensor_status_table.setItem(i, 0, sensor_item)
             
-    def _apply_acquisition_theme(self):
-        """Thème épuré pour l'acquisition"""
-        self.setStyleSheet("""
-            QWidget {
-                background-color: #1e1e1e;
-                color: #ffffff;
-                font-family: 'Segoe UI', Arial, sans-serif;
-            }
-            QGroupBox {
-                font-weight: bold;
-                border: 1px solid #444;
-                border-radius: 4px;
-                margin-top: 8px;
-                padding-top: 4px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 8px;
-                padding: 0 4px 0 4px;
-            }
+            # État du capteur
+            status_item = QTableWidgetItem("Prêt")
+            status_item.setFlags(Qt.ItemIsEnabled)
+            status_item.setBackground(QColor(39, 174, 96, 50))  # Vert léger
+            self.sensor_status_table.setItem(i, 1, status_item)
+        
+        # Ajustement des colonnes
+        self.sensor_status_table.resizeColumnsToContents()
+        sensor_layout.addWidget(self.sensor_status_table)
+        
+        # Statistiques en temps réel
+        stats_label = QLabel("Statistiques:")
+        sensor_layout.addWidget(stats_label)
+        
+        self.stats_text = QTextEdit()
+        self.stats_text.setMaximumHeight(80)
+        self.stats_text.setReadOnly(True)
+        self.stats_text.setPlainText(
+            "Points acquis: 0\n"
+            "Fréquence réelle: 0.0 Hz\n"
+            "Amplitude max: 0.0 mm"
+        )
+    
+    def reset_view(self):
+        """
+        Réinitialise la vue pour un nouveau projet
+        """
+        self.resetAcquisition()
+    
+    def set_calibration_data(self, calibration_data):
+        """
+        Configure la vue avec les données de calibration
+        """
+        # Mise à jour des informations d'essai avec les données de calibration
+        sensor_count = calibration_data.get('sensor_count', 4)
+        info_text = (
+            f"Projet: {calibration_data.get('project_name', 'Projet Test')}\n"
+            f"Date: {datetime.now().strftime('%d/%m/%Y %H:%M')}\n"
+            f"Capteurs: {sensor_count} actifs\n"
+            f"Fréquence: 100 Hz\n"
+            f"Durée prévue: 300 s"
+        )
+        self.trial_info_text.setPlainText(info_text)
+        
+        # Mise à jour du tableau des capteurs
+        self.sensor_status_table.setRowCount(sensor_count)
+        for i in range(sensor_count):
+            # Nom du capteur
+            sensor_item = QTableWidgetItem(f"Capteur {i+1}")
+            sensor_item.setFlags(Qt.ItemIsEnabled)
+            self.sensor_status_table.setItem(i, 0, sensor_item)
+            
+            # État du capteur
+            status_item = QTableWidgetItem("Prêt")
+            status_item.setFlags(Qt.ItemIsEnabled)
+            status_item.setBackground(QColor(39, 174, 96, 50))  # Vert léger
+            self.sensor_status_table.setItem(i, 1, status_item)
+        
+        # Ajustement des colonnes
+        self.sensor_status_table.resizeColumnsToContents()
+        
+        # Mise à jour des données de simulation
+        self.sensor_data = [[] for _ in range(sensor_count)]
+    
+    def get_acquisition_data(self):
+        """
+        Retourne les données d'acquisition pour le workflow
+        """
+        return {
+            'duration': self.current_time,
+            'sample_rate': 100.0,
+            'sensor_count': len(self.sensor_data),
+            'time_data': self.time_data.copy(),
+            'sensor_data': [data.copy() for data in self.sensor_data],
+            'start_time': self.start_time,
+            'end_time': datetime.now() if not self.is_acquiring else None,
+            'status': 'acquiring' if self.is_acquiring else 'completed'
+        }
+        sensor_layout.addWidget(self.stats_text)
+        
+        parent_layout.addWidget(sensor_group)
+    
+    def createControlPanel(self, parent_layout):
+        """
+        Création du panneau de contrôle minimaliste
+        """
+        control_group = QGroupBox("Contrôle d'Acquisition")
+        control_layout = QVBoxLayout(control_group)
+        
+        # Boutons de contrôle
+        button_layout = QVBoxLayout()
+        
+        # Bouton Démarrer/Arrêter
+        self.start_stop_button = QPushButton("Démarrer Acquisition")
+        self.start_stop_button.setMinimumHeight(40)
+        self.start_stop_button.setStyleSheet("""
             QPushButton {
-                background-color: #2196F3;
+                background-color: #27ae60;
+                color: white;
                 border: none;
-                border-radius: 4px;
-                padding: 8px;
+                border-radius: 8px;
                 font-weight: bold;
+                font-size: 11pt;
             }
             QPushButton:hover {
-                background-color: #1976D2;
+                background-color: #229954;
+            }
+        """)
+        button_layout.addWidget(self.start_stop_button)
+        
+        # Bouton Pause Affichage
+        self.pause_display_button = QPushButton("Pause Affichage")
+        self.pause_display_button.setMinimumHeight(35)
+        self.pause_display_button.setEnabled(False)
+        self.pause_display_button.setStyleSheet("""
+            QPushButton {
+                background-color: #f39c12;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 10pt;
+            }
+            QPushButton:hover {
+                background-color: #e67e22;
             }
             QPushButton:disabled {
-                background-color: #666;
-                color: #999;
+                background-color: #95a5a6;
+                color: #34495e;
+            }
+        """)
+        button_layout.addWidget(self.pause_display_button)
+        
+        control_layout.addLayout(button_layout)
+        
+        # Espacement
+        control_layout.addStretch()
+        
+        parent_layout.addWidget(control_group)
+        parent_layout.addStretch()
+    
+    def setupTimers(self):
+        """
+        Configuration des timers pour la simulation
+        """
+        # Timer pour la mise à jour des données
+        self.data_timer = QTimer()
+        self.data_timer.timeout.connect(self.updateData)
+        
+        # Timer pour la mise à jour de l'interface
+        self.ui_timer = QTimer()
+        self.ui_timer.timeout.connect(self.updateUI)
+        
+        # Données de simulation
+        self.time_data = []
+        self.sensor_data = [[] for _ in range(4)]
+        self.current_time = 0.0
+    
+    def connectSignals(self):
+        """
+        Connexion des signaux
+        """
+        self.start_stop_button.clicked.connect(self.toggleAcquisition)
+        self.pause_display_button.clicked.connect(self.toggleDisplayPause)
+    
+    def toggleAcquisition(self):
+        """
+        Basculement entre démarrage et arrêt de l'acquisition
+        """
+        if not self.is_acquiring:
+            self.startAcquisition()
+        else:
+            self.stopAcquisition()
+    
+    def startAcquisition(self):
+        """
+        Démarrage de l'acquisition
+        """
+        self.is_acquiring = True
+        self.start_time = datetime.now()
+        
+        # Mise à jour de l'interface
+        self.start_stop_button.setText("Arrêter Acquisition")
+        self.start_stop_button.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background-color: #c0392b;
             }
         """)
         
-    def _start_acquisition(self):
-        """Démarre l'acquisition"""
-        if self.acquisition_controller:
-            self.is_acquiring = True
-            self.start_time = time.time()
-            self.total_samples = 0
-            
-            # Mise à jour UI
-            self.start_button.setEnabled(False)
-            self.stop_button.setEnabled(True)
-            self.export_button.setEnabled(False)
-            
-            # Démarrer timer
-            self.update_timer.start(50)  # 20 FPS
-            
-            # Signal
-            self.acquisitionStarted.emit()
-            
-            # Mise à jour voyants
-            for label in self.probe_labels:
-                label.setText(label.text().replace("⚫", "🟢"))
-                label.setStyleSheet("color: #4CAF50;")
-                
-    def _stop_acquisition(self):
-        """Arrête l'acquisition et propose l'analyse"""
+        self.pause_display_button.setEnabled(True)
+        
+        # Mise à jour du statut des capteurs
+        for i in range(4):
+            status_item = QTableWidgetItem("Acquisition")
+            status_item.setFlags(Qt.ItemIsEnabled)
+            status_item.setBackground(QColor(52, 152, 219, 50))  # Bleu léger
+            self.sensor_status_table.setItem(i, 1, status_item)
+        
+        # Démarrage des timers
+        self.data_timer.start(10)  # 100 Hz
+        self.ui_timer.start(100)   # 10 Hz pour l'interface
+        
+        # Réinitialisation des données
+        self.time_data.clear()
+        for sensor_list in self.sensor_data:
+            sensor_list.clear()
+        self.current_time = 0.0
+    
+    def stopAcquisition(self):
+        """
+        Arrêt de l'acquisition
+        """
         self.is_acquiring = False
         
-        # Arrêter timer
-        self.update_timer.stop()
+        # Arrêt des timers
+        self.data_timer.stop()
+        self.ui_timer.stop()
         
-        # Mise à jour UI
-        self.start_button.setEnabled(True)
-        self.stop_button.setEnabled(False)
-        self.export_button.setEnabled(True)
+        # Mise à jour de l'interface
+        self.start_stop_button.setText("Démarrer Acquisition")
+        self.start_stop_button.setStyleSheet("""
+            QPushButton {
+                background-color: #27ae60;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-weight: bold;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background-color: #229954;
+            }
+        """)
         
-        # Signal
-        self.acquisitionStopped.emit()
+        self.pause_display_button.setEnabled(False)
+        self.pause_display_button.setText("Pause Affichage")
         
-        # Mise à jour voyants
-        for label in self.probe_labels:
-            label.setText(label.text().replace("🟢", "⚫"))
-            label.setStyleSheet("color: #666;")
-            
-        # Proposer ouverture vue analyse
-        if self.total_samples > 0:
-            self._propose_analysis()
-            
-    def _export_data(self):
-        """Exporte les données acquises"""
-        if not self.current_data or not any(self.current_data):
-            return
-            
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"acquisition_HRNeoWave_{timestamp}.csv"
-        filepath = os.path.join(self.save_folder, filename)
+        # Mise à jour du statut des capteurs
+        for i in range(4):
+            status_item = QTableWidgetItem("Arrêté")
+            status_item.setFlags(Qt.ItemIsEnabled)
+            status_item.setBackground(QColor(149, 165, 166, 50))  # Gris léger
+            self.sensor_status_table.setItem(i, 1, status_item)
         
-        # Export CSV simple
-        try:
-            with open(filepath, 'w', newline='') as f:
-                import csv
-                writer = csv.writer(f)
-                
-                # En-tête
-                headers = ['Time'] + [f'Sonde_{i+1}' for i in range(self.n_sondes)]
-                writer.writerow(headers)
-                
-                # Données
-                max_len = max(len(data) for data in self.current_data if data)
-                for i in range(max_len):
-                    row = [i / self.sample_rate]  # Temps
-                    for data in self.current_data:
-                        row.append(data[i] if i < len(data) else 0.0)
-                    writer.writerow(row)
-                    
-            self.dataExported.emit(filepath)
-            
-        except Exception as e:
-            print(f"Erreur export: {e}")
-            
-    def _propose_analysis(self):
-        """Propose l'ouverture de la vue analyse"""
-        # Signal pour demander ouverture vue analyse
-        # Le fichier sera exporté automatiquement
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"acquisition_HRNeoWave_{timestamp}.csv"
-        filepath = os.path.join(self.save_folder, filename)
+        # Préparation des données pour l'émission du signal
+        session_data = {
+            'duration': self.current_time,
+            'sample_rate': 100.0,
+            'sensor_count': 4,
+            'time_data': self.time_data.copy(),
+            'sensor_data': [data.copy() for data in self.sensor_data],
+            'start_time': self.start_time,
+            'end_time': datetime.now()
+        }
         
-        # Export automatique pour analyse
-        self._export_data()
+        # Émission du signal vers le MainController
+        self.acquisitionFinished.emit(session_data)
+    
+    def toggleDisplayPause(self):
+        """
+        Basculement de la pause d'affichage
+        """
+        self.is_paused = not self.is_paused
         
-        # Signal pour ouvrir vue analyse
-        self.analysisRequested.emit(filepath)
-        
-    def _update_live_display(self):
-        """Mise à jour affichage temps réel"""
+        if self.is_paused:
+            self.pause_display_button.setText("Reprendre Affichage")
+            self.ui_timer.stop()
+        else:
+            self.pause_display_button.setText("Pause Affichage")
+            if self.is_acquiring:
+                self.ui_timer.start(100)
+    
+    def updateData(self):
+        """
+        Mise à jour des données (simulation)
+        """
         if not self.is_acquiring:
             return
-            
-        # Simulation données (à remplacer par vraies données)
-        current_time = time.time() - self.start_time
         
-        # Mise à jour compteurs
-        self.total_samples = int(current_time * self.sample_rate)
-        self.samples_label.setText(str(self.total_samples))
+        # Génération de données simulées
+        dt = 0.01  # 100 Hz
+        self.current_time += dt
+        self.time_data.append(self.current_time)
         
-        minutes = int(current_time // 60)
-        seconds = int(current_time % 60)
-        self.duration_label.setText(f"{minutes:02d}:{seconds:02d}")
+        # Simulation de vagues avec différentes fréquences pour chaque capteur
+        for i in range(4):
+            # Mélange de plusieurs fréquences pour simuler des vagues réalistes
+            amplitude = (50 + 20 * np.sin(0.1 * self.current_time) *  # Variation lente
+                        np.sin(2 * np.pi * (0.5 + 0.1 * i) * self.current_time) +  # Fréquence principale
+                        10 * np.sin(2 * np.pi * (1.2 + 0.05 * i) * self.current_time) +  # Harmonique
+                        5 * np.random.normal())  # Bruit
+            
+            self.sensor_data[i].append(amplitude)
         
-        # Simulation données sondes
-        if self.acquisition_controller:
-            # Récupérer vraies données du controller
-            pass
-        else:
-            # Données simulées
-            t = np.linspace(current_time-10, current_time, 100)
-            signals = []
-            
-            for i in range(self.n_sondes):
-                # Signal sinusoïdal avec bruit
-                freq = 0.1 + i * 0.05
-                amplitude = 0.5 + i * 0.2
-                signal = amplitude * np.sin(2 * np.pi * freq * t) + 0.1 * np.random.randn(len(t))
-                signals.append(signal)
-                
-                # Stocker pour export
-                if len(self.current_data[i]) > 1000:  # Limite mémoire
-                    self.current_data[i] = self.current_data[i][-500:]
-                self.current_data[i].extend(signal[-10:])  # Ajouter nouveaux points
-            
-            # Mise à jour via GraphManager
-            self.graph_manager.update_data(t, signals)
-                
-        # Mise à jour stats live
-        self._update_live_stats()
-        
-        # Arrêt automatique si durée atteinte
-        if current_time >= self.duration:
-            self._stop_acquisition()
-            
-    def _update_live_stats(self):
-        """Calcule et affiche stats live"""
-        if not any(self.current_data):
+        # Limitation de la taille des buffers (garder seulement les 1000 derniers points)
+        max_points = 1000
+        if len(self.time_data) > max_points:
+            self.time_data = self.time_data[-max_points:]
+            for sensor_list in self.sensor_data:
+                sensor_list[:] = sensor_list[-max_points:]
+    
+    def updateUI(self):
+        """
+        Mise à jour de l'interface utilisateur
+        """
+        if not self.is_acquiring or self.is_paused:
             return
-            
-        # Calcul stats sur données récentes
-        all_data = []
-        for data in self.current_data:
+        
+        # Mise à jour des graphiques
+        self.updateGraphs()
+        
+        # Mise à jour des statistiques
+        self.updateStatistics()
+        
+        # Mise à jour du temps écoulé
+        if self.start_time:
+            elapsed = datetime.now() - self.start_time
+            elapsed_str = str(elapsed).split('.')[0]  # Suppression des microsecondes
+            self.elapsed_time_label.setText(f"Temps écoulé: {elapsed_str}")
+        
+        # Mise à jour de la barre de progression (simulation sur 300s)
+        progress = min(100, (self.current_time / 300.0) * 100)
+        self.acquisition_progress.setValue(int(progress))
+    
+    def updateGraphs(self):
+        """
+        Mise à jour des graphiques
+        """
+        if not self.time_data or not self.sensor_data[0]:
+            return
+        
+        # Graphique temps réel (dernier capteur)
+        self.realtime_plot.clear()
+        self.realtime_plot.plot(self.time_data, self.sensor_data[0], pen='b')
+        
+        # Graphique séries temporelles (tous les capteurs)
+        self.time_series_plot.clear()
+        colors = ['r', 'g', 'b', 'y']
+        for i, (data, color) in enumerate(zip(self.sensor_data, colors)):
             if data:
-                all_data.extend(data[-100:])  # 100 derniers points
-                
-        if all_data:
-            # Hmax
-            hmax = max(abs(x) for x in all_data)
-            self.live_stats['hmax'] = hmax
-            self.hmax_label.setText(f"{hmax:.3f} m")
-            
-            # Hmean
-            hmean = np.mean([abs(x) for x in all_data])
-            self.live_stats['hmean'] = hmean
-            self.hmean_label.setText(f"{hmean:.3f} m")
-            
-            # Tmean (période moyenne approximative)
-            tmean = 2.0 + np.random.normal(0, 0.1)  # Simulation
-            self.live_stats['tmean'] = tmean
-            self.tmean_label.setText(f"{tmean:.2f} s")
-    
-    def _connect_unified_signals(self):
-        """P0: Connecte les signaux unifiés pour mise à jour des 3 graphes"""
-        if self.signal_bus:
-            # dataBlockReady(ndarray) émis toutes les 0,5s
-            self.signal_bus.dataBlockReady.connect(self._on_data_block_ready)
-            
-            # sessionFinished() émis après Stop
-            self.signal_bus.sessionFinished.connect(self._on_session_finished)
+                self.time_series_plot.plot(self.time_data, data, pen=color, name=f'Capteur {i+1}')
         
-        if self.error_bus:
-            # error(str) pour affichage toast rouge
-            self.error_bus.error_occurred.connect(self._on_error_occurred)
+        # Graphique fréquentiel (FFT du premier capteur)
+        if len(self.sensor_data[0]) > 64:  # Minimum pour une FFT significative
+            self.updateFrequencyPlot()
     
-    @pyqtSlot(object)
-    def _on_data_block_ready(self, data_block):
-        """P0: Met à jour les 3 graphes avec dataBlockReady"""
-        if not self.is_acquiring:
-            return
-            
+    def updateFrequencyPlot(self):
+        """
+        Mise à jour du graphique fréquentiel
+        """
         try:
-            # Extraire données du data_block (objet DataBlock)
-            if hasattr(data_block, 'data'):
-                data = data_block.data
-                timestamp = data_block.timestamp
-            else:
-                # Fallback pour dictionnaire (compatibilité)
-                data = data_block.get('data', [])
-                timestamp = data_block.get('timestamp', time.time())
+            # FFT des données du premier capteur
+            data = np.array(self.sensor_data[0][-512:])  # Derniers 512 points
+            fft = np.fft.fft(data)
+            freqs = np.fft.fftfreq(len(data), 0.01)  # dt = 0.01s
             
-            if len(data) == 0:
-                return
-                
-            # Convertir en format pour GraphManager
-            if isinstance(data, np.ndarray):
-                if data.ndim == 1:
-                    # Un seul échantillon multi-canal
-                    signals = [data] if len(data) == self.n_sondes else [data[:self.n_sondes]]
-                else:
-                    # Plusieurs échantillons
-                    signals = [data[:, i] if i < data.shape[1] else np.zeros(data.shape[0]) 
-                              for i in range(self.n_sondes)]
-            else:
-                # Liste de valeurs
-                signals = [np.array([data[i] if i < len(data) else 0.0]) for i in range(self.n_sondes)]
+            # Garder seulement les fréquences positives
+            positive_freqs = freqs[:len(freqs)//2]
+            positive_fft = np.abs(fft[:len(fft)//2])
             
-            # Créer vecteur temps
-            if len(signals[0]) > 1:
-                time_vector = np.linspace(timestamp - len(signals[0])/self.sample_rate, 
-                                        timestamp, len(signals[0]))
-            else:
-                time_vector = np.array([timestamp])
-            
-            # P0: Mettre à jour les 3 graphes via GraphManager
-            self.graph_manager.update_data(time_vector, signals)
-            
-            # Stocker pour export et stats
-            for i, signal in enumerate(signals):
-                if i < len(self.current_data):
-                    if len(self.current_data[i]) > 1000:  # Limite mémoire
-                        self.current_data[i] = self.current_data[i][-500:]
-                    self.current_data[i].extend(signal.tolist())
-            
-            # Mise à jour compteurs
-            self.total_samples += len(signals[0]) if signals else 0
-            self.samples_label.setText(str(self.total_samples))
-            
-            # Mise à jour stats live
-            self._update_live_stats()
-            
-        except Exception as e:
-            print(f"Erreur _on_data_block_ready: {e}")
+            self.frequency_plot.clear()
+            self.frequency_plot.plot(positive_freqs, positive_fft, pen='r')
+        except Exception:
+            pass  # Ignorer les erreurs de FFT
     
-    @pyqtSlot()
-    def _on_session_finished(self):
-        """P0: Gère sessionFinished() - arrête acquisition et propose analyse"""
+    def updateStatistics(self):
+        """
+        Mise à jour des statistiques
+        """
+        if not self.sensor_data[0]:
+            return
+        
+        # Calcul des statistiques
+        points_count = len(self.time_data)
+        real_frequency = points_count / max(self.current_time, 0.01)
+        max_amplitude = max(max(data) if data else [0] for data in self.sensor_data)
+        
+        stats_text = (
+            f"Points acquis: {points_count}\n"
+            f"Fréquence réelle: {real_frequency:.1f} Hz\n"
+            f"Amplitude max: {max_amplitude:.1f} mm"
+        )
+        
+        self.stats_text.setPlainText(stats_text)
+    
+    def resetAcquisition(self):
+        """
+        Réinitialisation de l'acquisition
+        """
         if self.is_acquiring:
-            self._stop_acquisition()
+            self.stopAcquisition()
+        
+        # Nettoyage des données
+        self.time_data.clear()
+        for sensor_list in self.sensor_data:
+            sensor_list.clear()
+        self.current_time = 0.0
+        
+        # Nettoyage des graphiques
+        self.time_series_plot.clear()
+        self.frequency_plot.clear()
+        self.realtime_plot.clear()
+        
+        # Réinitialisation de l'interface
+        self.acquisition_progress.setValue(0)
+        self.elapsed_time_label.setText("Temps écoulé: 00:00:00")
+        self.stats_text.setPlainText(
+            "Points acquis: 0\n"
+            "Fréquence réelle: 0.0 Hz\n"
+            "Amplitude max: 0.0 mm"
+        )
     
-    @pyqtSlot(object)
-    def _on_error_occurred(self, error_msg):
-        """P0: Gère error(object) - affichage via ErrorBus"""
-        # error_msg est un objet ErrorMessage
-        if hasattr(error_msg, 'message'):
-            print(f"Erreur acquisition: {error_msg.message}")
-        else:
-            print(f"Erreur acquisition: {error_msg}")
-        # L'ErrorBus gère déjà l'affichage toast rouge via ViewManager
-
-# Test standalone
-if __name__ == "__main__":
-    app = QApplication(sys.argv)
+    def set_controller(self, controller):
+        """
+        Définit le contrôleur d'acquisition pour cette vue
+        """
+        self.controller = controller
+        print(f"[DEBUG] Contrôleur d'acquisition défini: {controller}")
+        
+        # Connecter les signaux du contrôleur si nécessaire
+        if hasattr(controller, 'acquisition_started'):
+            controller.acquisition_started.connect(self._on_controller_acquisition_started)
+        if hasattr(controller, 'acquisition_stopped'):
+            controller.acquisition_stopped.connect(self._on_controller_acquisition_stopped)
     
-    config = {
-        'n_channels': 4,
-        'sample_rate': 32.0,
-        'duration': 300,
-        'save_folder': './data'
-    }
+    def _on_controller_acquisition_started(self):
+        """Gestionnaire pour le démarrage d'acquisition depuis le contrôleur"""
+        print("[DEBUG] Acquisition démarrée depuis le contrôleur")
     
-    view = AcquisitionView(config)
-    view.show()
-    
-    sys.exit(app.exec_())
+    def _on_controller_acquisition_stopped(self):
+        """Gestionnaire pour l'arrêt d'acquisition depuis le contrôleur"""
+        print("[DEBUG] Acquisition arrêtée depuis le contrôleur")

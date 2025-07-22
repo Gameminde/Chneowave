@@ -12,6 +12,7 @@ from scipy.optimize import fsolve
 from typing import Dict, List, Tuple, Optional, NamedTuple
 import hashlib
 from functools import lru_cache
+from collections import OrderedDict
 import warnings
 from dataclasses import dataclass
 
@@ -76,7 +77,7 @@ class OptimizedGodaAnalyzer:
         self.g = 9.81  # Accélération gravitationnelle [m/s²]
 
         # Cache pour les matrices de géométrie
-        self._matrix_cache: Dict[str, Tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+        self._matrix_cache: OrderedDict[str, Tuple[np.ndarray, np.ndarray, np.ndarray]] = OrderedDict()
         self._dispersion_cache: Dict[float, float] = {}
 
         # Pré-calcul des matrices pour les fréquences communes
@@ -155,6 +156,8 @@ class OptimizedGodaAnalyzer:
         cache_key = self._get_matrix_cache_key(frequency)
 
         if self.enable_cache and cache_key in self._matrix_cache:
+            # Déplacer l'élément accédé à la fin pour marquer comme récemment utilisé
+            self._matrix_cache.move_to_end(cache_key)
             return self._matrix_cache[cache_key]
 
         omega = 2 * np.pi * frequency
@@ -187,13 +190,10 @@ class OptimizedGodaAnalyzer:
 
         result = (A, U_filtered, s_filtered, Vt_filtered)
 
-        # Cache avec limitation de taille
+        # Cache avec limitation de taille (LRU)
         if self.enable_cache:
             if len(self._matrix_cache) >= self.cache_size:
-                # Supprimer l'entrée la plus ancienne (FIFO simple)
-                oldest_key = next(iter(self._matrix_cache))
-                del self._matrix_cache[oldest_key]
-
+                self._matrix_cache.popitem(last=False)  # Supprimer le plus ancien
             self._matrix_cache[cache_key] = result
 
         return result
