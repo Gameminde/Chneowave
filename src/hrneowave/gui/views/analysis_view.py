@@ -1,824 +1,1076 @@
 # -*- coding: utf-8 -*-
 """
-Vue d'analyse CHNeoWave
-Étape 4 : Analyse et résultats
+Analysis View - Maritime Theme 2025
+Vue d'analyse des données avec design maritime et Golden Ratio
 """
 
+from PySide6.QtCore import Qt, Signal, QTimer, QPropertyAnimation, QEasingCurve
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QTabWidget, QLabel, QPushButton,
-    QTableWidget, QTableWidgetItem, QTextEdit, QGroupBox, QSplitter,
-    QScrollArea, QGridLayout, QFormLayout, QSpinBox, QDoubleSpinBox,
-    QCheckBox, QComboBox, QProgressBar
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QFrame,
+    QGroupBox, QGridLayout, QSpinBox, QDoubleSpinBox, QComboBox,
+    QCheckBox, QTextEdit, QSplitter, QProgressBar, QSlider,
+    QTabWidget, QScrollArea, QSpacerItem, QSizePolicy, QListWidget,
+    QListWidgetItem, QTableWidget, QTableWidgetItem, QHeaderView
 )
-from PySide6.QtCore import Signal, Qt, QThread, Slot
-from PySide6.QtGui import QFont, QColor, QPixmap, QPainter
+from PySide6.QtGui import QFont, QPainter, QColor, QLinearGradient, QPixmap
 
-import numpy as np
-from datetime import datetime
-import json
-# Utilisation de l'adaptateur matplotlib pour compatibilité PySide6
-from ..components.matplotlib_adapter import pg
+# Golden Ratio Constants
+FIBONACCI_SPACING = [8, 13, 21, 34, 55, 89]
+GOLDEN_RATIO = 1.618
 
-class AnalysisView(QWidget):
+class AnalysisToolsPanel(QFrame):
     """
-    Vue d'analyse des données
-    Respecte le principe d'isolation : UNIQUEMENT l'analyse
+    Panneau d'outils d'analyse
     """
-
-    analysisFinished = Signal(dict)
-
+    
+    # Signaux
+    analysis_requested = Signal(str, dict)  # type d'analyse, paramètres
+    filter_applied = Signal(str, dict)      # type de filtre, paramètres
+    export_requested = Signal(str)          # format d'export
+    
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.session_data = None
-        self.analysis_results = {}
-        self.setupUI()
-        self.connectSignals()
-    
-    def setupUI(self):
-        """
-        Configuration de l'interface utilisateur
-        """
+        
+        self.setup_ui()
+        self.setup_connections()
+        
+    def setup_ui(self):
+        """Configure l'interface du panneau d'outils"""
+        self.setObjectName("analysis_tools_panel")
+        self.setFixedWidth(int(280 * GOLDEN_RATIO))  # ~453px
+        
         # Layout principal
         main_layout = QVBoxLayout(self)
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
         
-        # Titre principal
-        title_label = QLabel("Étape 4 : Analyse et Résultats")
-        title_font = QFont()
-        title_font.setPointSize(16)
-        title_font.setBold(True)
-        title_label.setFont(title_font)
-        title_label.setStyleSheet("color: #2980b9; margin-bottom: 10px;")
-        main_layout.addWidget(title_label)
+        # En-tête
+        self.setup_header(main_layout)
         
-        # Widget à onglets pour les différentes analyses
-        self.analysis_tabs = QTabWidget()
-        self.analysis_tabs.setMinimumHeight(500)
+        # Zone de défilement
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        scroll_area.setFrameStyle(QFrame.Shape.NoFrame)
         
-        # Onglet 1 : Analyse spectrale
-        self.createSpectralAnalysisTab()
+        # Widget conteneur
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setSpacing(FIBONACCI_SPACING[2])
+        content_layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[1], 
+                                         FIBONACCI_SPACING[2], FIBONACCI_SPACING[2])
         
-        # Onglet 2 : Analyse de Goda
-        self.createGodaAnalysisTab()
+        # Sections du panneau
+        self.setup_data_selection(content_layout)
+        self.setup_filters_section(content_layout)
+        self.setup_analysis_section(content_layout)
+        self.setup_export_section(content_layout)
         
-        # Onglet 3 : Statistiques
-        self.createStatisticsTab()
+        content_layout.addStretch()
+        scroll_area.setWidget(content_widget)
+        main_layout.addWidget(scroll_area)
         
-        # Onglet 4 : Rapport de synthèse
-        self.createSummaryTab()
-        
-        main_layout.addWidget(self.analysis_tabs)
-        
-        # Espacement
-        main_layout.addStretch()
-        
-        # Bouton de navigation
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-        
-        self.export_button = QPushButton("Suivant : Exporter le Rapport")
-        self.export_button.setMinimumHeight(45)
-        self.export_button.setMinimumWidth(250)
-        self.export_button.setEnabled(False)  # Désactivé par défaut
-        self.export_button.setStyleSheet("""
-            QPushButton {
-                background-color: #2980b9;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-weight: bold;
-                font-size: 12pt;
-            }
-            QPushButton:hover {
-                background-color: #1e3a5f;
-            }
-            QPushButton:disabled {
-                background-color: #95a5a6;
-                color: #34495e;
+        # Style du panneau
+        self.setStyleSheet("""
+            QFrame#analysis_tools_panel {
+                background-color: #F5FBFF;
+                border-right: 2px solid #E0E7FF;
             }
         """)
         
-        button_layout.addWidget(self.export_button)
-        main_layout.addLayout(button_layout)
-    
-    def createSpectralAnalysisTab(self):
-        """
-        Création de l'onglet d'analyse spectrale
-        """
-        spectral_widget = QWidget()
-        layout = QVBoxLayout(spectral_widget)
+    def setup_header(self, parent_layout):
+        """Configure l'en-tête du panneau"""
+        header_frame = QFrame()
+        header_frame.setObjectName("tools_panel_header")
+        header_frame.setFixedHeight(89)  # Fibonacci
         
-        # Splitter horizontal
-        splitter = QSplitter(Qt.Horizontal)
+        header_layout = QVBoxLayout(header_frame)
+        header_layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[2], 
+                                        FIBONACCI_SPACING[2], FIBONACCI_SPACING[1])
+        header_layout.setSpacing(FIBONACCI_SPACING[0])
         
-        # Zone des graphiques
-        graphs_widget = QWidget()
-        graphs_layout = QVBoxLayout(graphs_widget)
+        # Titre
+        title_label = QLabel("Outils d'Analyse")
+        title_label.setFont(QFont("Inter", 18, QFont.Weight.Bold))
+        title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title_label.setStyleSheet("color: #0A1929;")
         
-        # Graphique des spectres
-        self.spectrum_plot = pg.PlotWidget()
-        self.spectrum_plot.setLabel('left', 'Densité Spectrale (m²/Hz)')
-        self.spectrum_plot.setLabel('bottom', 'Fréquence (Hz)')
-        self.spectrum_plot.setTitle('Spectres de Densité de Puissance')
-        self.spectrum_plot.setLogMode(False, True)  # Log sur l'axe Y
-        graphs_layout.addWidget(self.spectrum_plot)
+        # Sous-titre
+        subtitle_label = QLabel("Traitement et analyse")
+        subtitle_label.setFont(QFont("Inter", 12))
+        subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        subtitle_label.setStyleSheet("color: #445868;")
         
-        # Graphique des fonctions de transfert
-        self.transfer_plot = pg.PlotWidget()
-        self.transfer_plot.setLabel('left', 'Cohérence')
-        self.transfer_plot.setLabel('bottom', 'Fréquence (Hz)')
-        self.transfer_plot.setTitle('Fonctions de Cohérence')
-        graphs_layout.addWidget(self.transfer_plot)
+        header_layout.addWidget(title_label)
+        header_layout.addWidget(subtitle_label)
         
-        splitter.addWidget(graphs_widget)
+        # Style du header
+        header_frame.setStyleSheet("""
+            QFrame#tools_panel_header {
+                background-color: #F5FBFF;
+                border-bottom: 2px solid #E0E7FF;
+            }
+        """)
         
-        # Zone de contrôle
-        control_widget = QWidget()
-        control_layout = QVBoxLayout(control_widget)
+        parent_layout.addWidget(header_frame)
         
-        # Paramètres d'analyse
-        params_group = QGroupBox("Paramètres d'Analyse")
-        params_layout = QFormLayout(params_group)
+    def setup_data_selection(self, parent_layout):
+        """Configure la section de sélection des données"""
+        data_group = QGroupBox("Sélection des Données")
+        data_group.setFont(QFont("Inter", 14, QFont.Weight.Medium))
+        data_layout = QVBoxLayout(data_group)
+        data_layout.setSpacing(FIBONACCI_SPACING[1])
         
-        self.window_size_spin = QSpinBox()
-        self.window_size_spin.setRange(64, 2048)
-        self.window_size_spin.setValue(512)
-        params_layout.addRow("Taille fenêtre:", self.window_size_spin)
+        # Liste des fichiers de données
+        self.data_list = QListWidget()
+        self.data_list.setMaximumHeight(120)
+        self.data_list.setFont(QFont("Inter", 11))
         
-        self.overlap_spin = QSpinBox()
-        self.overlap_spin.setRange(0, 90)
-        self.overlap_spin.setValue(50)
-        self.overlap_spin.setSuffix("%")
-        params_layout.addRow("Recouvrement:", self.overlap_spin)
+        # Ajouter des éléments d'exemple
+        sample_files = [
+            "📊 acquisition_2025_01_15_10h30.csv",
+            "📊 test_calibration_2025_01_14.csv",
+            "📊 mesure_houle_2025_01_13.csv"
+        ]
         
-        self.window_type_combo = QComboBox()
-        self.window_type_combo.addItems(["Hanning", "Hamming", "Blackman", "Rectangular"])
-        params_layout.addRow("Type fenêtre:", self.window_type_combo)
-        
-        control_layout.addWidget(params_group)
-        
-        # Bouton d'analyse
-        self.analyze_spectrum_btn = QPushButton("Analyser Spectres")
-        self.analyze_spectrum_btn.clicked.connect(self.performSpectralAnalysis)
-        control_layout.addWidget(self.analyze_spectrum_btn)
-        
-        # Résultats
-        results_group = QGroupBox("Résultats Spectraux")
-        results_layout = QVBoxLayout(results_group)
-        
-        self.spectral_results_text = QTextEdit()
-        self.spectral_results_text.setMaximumHeight(200)
-        self.spectral_results_text.setReadOnly(True)
-        results_layout.addWidget(self.spectral_results_text)
-        
-        control_layout.addWidget(results_group)
-        control_layout.addStretch()
-        
-        control_widget.setMaximumWidth(300)
-        splitter.addWidget(control_widget)
-        
-        layout.addWidget(splitter)
-        self.analysis_tabs.addTab(spectral_widget, "Analyse Spectrale")
-    
-    def createGodaAnalysisTab(self):
-        """
-        Création de l'onglet d'analyse de Goda
-        """
-        goda_widget = QWidget()
-        layout = QVBoxLayout(goda_widget)
-        
-        # Splitter horizontal
-        splitter = QSplitter(Qt.Horizontal)
-        
-        # Zone des graphiques
-        graphs_widget = QWidget()
-        graphs_layout = QVBoxLayout(graphs_widget)
-        
-        # Graphique de la distribution de Goda
-        self.goda_plot = pg.PlotWidget()
-        self.goda_plot.setLabel('left', 'Hauteur de Vague (m)')
-        self.goda_plot.setLabel('bottom', 'Probabilité de Dépassement')
-        self.goda_plot.setTitle('Distribution de Goda')
-        self.goda_plot.setLogMode(True, False)  # Log sur l'axe X
-        graphs_layout.addWidget(self.goda_plot)
-        
-        # Graphique des hauteurs significatives
-        self.wave_height_plot = pg.PlotWidget()
-        self.wave_height_plot.setLabel('left', 'Hauteur (m)')
-        self.wave_height_plot.setLabel('bottom', 'Temps (s)')
-        self.wave_height_plot.setTitle('Évolution des Hauteurs de Vagues')
-        graphs_layout.addWidget(self.wave_height_plot)
-        
-        splitter.addWidget(graphs_widget)
-        
-        # Zone de contrôle
-        control_widget = QWidget()
-        control_layout = QVBoxLayout(control_widget)
-        
-        # Paramètres de Goda
-        goda_params_group = QGroupBox("Paramètres de Goda")
-        goda_params_layout = QFormLayout(goda_params_group)
-        
-        self.analysis_duration_spin = QDoubleSpinBox()
-        self.analysis_duration_spin.setRange(10.0, 1000.0)
-        self.analysis_duration_spin.setValue(100.0)
-        self.analysis_duration_spin.setSuffix(" s")
-        goda_params_layout.addRow("Durée d'analyse:", self.analysis_duration_spin)
-        
-        self.zero_crossing_check = QCheckBox("Méthode zero-crossing")
-        self.zero_crossing_check.setChecked(True)
-        goda_params_layout.addRow(self.zero_crossing_check)
-        
-        control_layout.addWidget(goda_params_group)
-        
-        # Bouton d'analyse
-        self.analyze_goda_btn = QPushButton("Analyser Goda")
-        self.analyze_goda_btn.clicked.connect(self.performGodaAnalysis)
-        control_layout.addWidget(self.analyze_goda_btn)
-        
-        # Résultats de Goda
-        goda_results_group = QGroupBox("Résultats de Goda")
-        goda_results_layout = QVBoxLayout(goda_results_group)
-        
-        self.goda_results_text = QTextEdit()
-        self.goda_results_text.setMaximumHeight(200)
-        self.goda_results_text.setReadOnly(True)
-        goda_results_layout.addWidget(self.goda_results_text)
-        
-        control_layout.addWidget(goda_results_group)
-        control_layout.addStretch()
-        
-        control_widget.setMaximumWidth(300)
-        splitter.addWidget(control_widget)
-        
-        layout.addWidget(splitter)
-        self.analysis_tabs.addTab(goda_widget, "Analyse de Goda")
-    
-    def createStatisticsTab(self):
-        """
-        Création de l'onglet des statistiques
-        """
-        # Import de pyqtgraph pour cette méthode
-        stats_widget = QWidget()
-        layout = QVBoxLayout(stats_widget)
-        
-        # Splitter horizontal
-        splitter = QSplitter(Qt.Horizontal)
-        
-        # Zone des graphiques statistiques
-        graphs_widget = QWidget()
-        graphs_layout = QVBoxLayout(graphs_widget)
-        
-        # Histogramme des amplitudes
-        self.histogram_plot = pg.PlotWidget()
-        self.histogram_plot.setLabel('left', 'Fréquence')
-        self.histogram_plot.setLabel('bottom', 'Amplitude (mm)')
-        self.histogram_plot.setTitle('Distribution des Amplitudes')
-        graphs_layout.addWidget(self.histogram_plot)
-        
-        # Graphique Q-Q plot
-        self.qq_plot = pg.PlotWidget()
-        self.qq_plot.setLabel('left', 'Quantiles Observés')
-        self.qq_plot.setLabel('bottom', 'Quantiles Théoriques')
-        self.qq_plot.setTitle('Q-Q Plot (Normalité)')
-        graphs_layout.addWidget(self.qq_plot)
-        
-        splitter.addWidget(graphs_widget)
-        
-        # Zone des tableaux statistiques
-        tables_widget = QWidget()
-        tables_layout = QVBoxLayout(tables_widget)
-        
-        # Tableau des statistiques descriptives
-        stats_group = QGroupBox("Statistiques Descriptives")
-        stats_group_layout = QVBoxLayout(stats_group)
-        
-        self.stats_table = QTableWidget(8, 5)  # 8 statistiques, 4 capteurs + 1 colonne nom
-        self.stats_table.setHorizontalHeaderLabels(["Statistique", "Capteur 1", "Capteur 2", "Capteur 3", "Capteur 4"])
-        
-        # Remplissage des noms de statistiques
-        stats_names = ["Moyenne", "Écart-type", "Minimum", "Maximum", "Médiane", "Asymétrie", "Aplatissement", "RMS"]
-        for i, name in enumerate(stats_names):
-            item = QTableWidgetItem(name)
-            item.setFlags(Qt.ItemIsEnabled)
-            self.stats_table.setItem(i, 0, item)
-        
-        self.stats_table.resizeColumnsToContents()
-        stats_group_layout.addWidget(self.stats_table)
-        
-        tables_layout.addWidget(stats_group)
-        
-        # Bouton de calcul des statistiques
-        self.calculate_stats_btn = QPushButton("Calculer Statistiques")
-        self.calculate_stats_btn.clicked.connect(self.calculateStatistics)
-        tables_layout.addWidget(self.calculate_stats_btn)
-        
-        # Tests statistiques
-        tests_group = QGroupBox("Tests Statistiques")
-        tests_layout = QVBoxLayout(tests_group)
-        
-        self.statistical_tests_text = QTextEdit()
-        self.statistical_tests_text.setMaximumHeight(150)
-        self.statistical_tests_text.setReadOnly(True)
-        tests_layout.addWidget(self.statistical_tests_text)
-        
-        tables_layout.addWidget(tests_group)
-        
-        tables_widget.setMaximumWidth(400)
-        splitter.addWidget(tables_widget)
-        
-        layout.addWidget(splitter)
-        self.analysis_tabs.addTab(stats_widget, "Statistiques")
-    
-    def createSummaryTab(self):
-        """
-        Création de l'onglet de rapport de synthèse
-        """
-        summary_widget = QWidget()
-        layout = QVBoxLayout(summary_widget)
-        
-        # Zone de rapport
-        report_group = QGroupBox("Rapport de Synthèse")
-        report_layout = QVBoxLayout(report_group)
-        
-        # Zone de texte pour le rapport
-        self.summary_report_text = QTextEdit()
-        self.summary_report_text.setMinimumHeight(400)
-        self.summary_report_text.setReadOnly(True)
-        report_layout.addWidget(self.summary_report_text)
-        
-        # Boutons de génération
-        buttons_layout = QHBoxLayout()
-        
-        self.generate_report_btn = QPushButton("Générer Rapport")
-        self.generate_report_btn.clicked.connect(self.generateSummaryReport)
-        buttons_layout.addWidget(self.generate_report_btn)
-        
-        self.export_pdf_btn = QPushButton("Exporter PDF")
-        self.export_pdf_btn.setEnabled(False)
-        buttons_layout.addWidget(self.export_pdf_btn)
-        
-        buttons_layout.addStretch()
-        report_layout.addLayout(buttons_layout)
-        
-        layout.addWidget(report_group)
-        self.analysis_tabs.addTab(summary_widget, "Rapport")
-    
-    def connectSignals(self):
-        """
-        Connexion des signaux
-        """
-        self.export_button.clicked.connect(self.completeAnalysis)
-    
-    def setSessionData(self, session_data):
-        """
-        Définition des données de session pour l'analyse
-        """
-        self.session_data = session_data
-        self.export_button.setEnabled(True)
-        
-        # Mise à jour de l'interface avec les nouvelles données
-        self.updateDataInfo()
-    
-    def updateDataInfo(self):
-        """
-        Mise à jour des informations sur les données
-        """
-        if not self.session_data:
-            return
-        
-        # Affichage des informations de base dans le premier onglet
-        info_text = f"""Données chargées:
-
-Durée: {self.session_data.get('duration', 0):.1f} s
-Fréquence d'échantillonnage: {self.session_data.get('sample_rate', 0):.1f} Hz
-Nombre de capteurs: {self.session_data.get('sensor_count', 0)}
-Nombre de points: {len(self.session_data.get('time_data', []))}
-
-Analyse prête à être lancée."""
-        
-        self.spectral_results_text.setPlainText(info_text)
-    
-    def performSpectralAnalysis(self):
-        """
-        Exécution de l'analyse spectrale
-        """
-        if not self.session_data or not self.session_data.get('sensor_data'):
-            return
-        
-        try:
-            # Paramètres d'analyse
-            window_size = self.window_size_spin.value()
-            overlap = self.overlap_spin.value() / 100.0
+        for file_name in sample_files:
+            item = QListWidgetItem(file_name)
+            item.setFont(QFont("Inter", 11))
+            self.data_list.addItem(item)
             
-            # Analyse pour chaque capteur
-            sensor_data = self.session_data['sensor_data']
-            sample_rate = self.session_data.get('sample_rate', 100.0)
+        # Sélectionner le premier élément
+        if self.data_list.count() > 0:
+            self.data_list.setCurrentRow(0)
             
-            # Calcul des spectres
-            frequencies = None
-            spectra = []
+        # Boutons de gestion des fichiers
+        file_buttons_layout = QHBoxLayout()
+        file_buttons_layout.setSpacing(FIBONACCI_SPACING[0])
+        
+        load_button = QPushButton("📁 Charger")
+        load_button.setFont(QFont("Inter", 10, QFont.Weight.Medium))
+        load_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        
+        refresh_button = QPushButton("🔄 Actualiser")
+        refresh_button.setFont(QFont("Inter", 10, QFont.Weight.Medium))
+        refresh_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        
+        file_buttons_layout.addWidget(load_button)
+        file_buttons_layout.addWidget(refresh_button)
+        
+        # Style des boutons
+        button_style = """
+            QPushButton {
+                background-color: #2B79B6;
+                color: #F5FBFF;
+                border: none;
+                border-radius: 17px;
+                padding: 5px 8px;
+                font-weight: 500;
+            }
             
-            colors = ['r', 'g', 'b', 'y']
-            self.spectrum_plot.clear()
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
             
-            for i, data in enumerate(sensor_data[:4]):  # Maximum 4 capteurs
-                if len(data) < window_size:
-                    continue
-                
-                # FFT avec fenêtrage
-                data_array = np.array(data)
-                
-                # Application d'une fenêtre de Hanning
-                windowed_data = data_array * np.hanning(len(data_array))
-                
-                # Calcul de la FFT
-                fft = np.fft.fft(windowed_data)
-                frequencies = np.fft.fftfreq(len(windowed_data), 1/sample_rate)
-                
-                # Densité spectrale de puissance
-                psd = np.abs(fft)**2 / (sample_rate * len(windowed_data))
-                
-                # Garder seulement les fréquences positives
-                positive_freqs = frequencies[:len(frequencies)//2]
-                positive_psd = psd[:len(psd)//2]
-                
-                spectra.append(positive_psd)
-                
-                # Affichage
-                self.spectrum_plot.plot(positive_freqs, positive_psd, 
-                                      pen=colors[i], name=f'Capteur {i+1}')
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """
+        
+        load_button.setStyleSheet(button_style)
+        refresh_button.setStyleSheet(button_style)
+        
+        # Style de la liste
+        self.data_list.setStyleSheet("""
+            QListWidget {
+                background-color: white;
+                border: 1px solid #E0E7FF;
+                border-radius: 8px;
+                padding: 5px;
+            }
             
-            # Calcul des statistiques spectrales
-            if frequencies is not None and spectra:
-                self.calculateSpectralStatistics(positive_freqs, spectra)
+            QListWidget::item {
+                padding: 5px;
+                border-radius: 5px;
+                margin: 1px;
+            }
             
-            # Sauvegarde des résultats
-            self.analysis_results['spectral'] = {
-                'frequencies': positive_freqs.tolist() if frequencies is not None else [],
-                'spectra': [spectrum.tolist() for spectrum in spectra],
-                'parameters': {
-                    'window_size': window_size,
-                    'overlap': overlap,
-                    'window_type': self.window_type_combo.currentText()
+            QListWidget::item:selected {
+                background-color: rgba(0, 172, 193, 0.2);
+                color: #0A1929;
+            }
+            
+            QListWidget::item:hover {
+                background-color: rgba(0, 172, 193, 0.1);
+            }
+        """)
+        
+        # Assemblage
+        data_layout.addWidget(self.data_list)
+        data_layout.addLayout(file_buttons_layout)
+        
+        parent_layout.addWidget(data_group)
+        
+    def setup_filters_section(self, parent_layout):
+        """Configure la section des filtres"""
+        filters_group = QGroupBox("Filtres")
+        filters_group.setFont(QFont("Inter", 14, QFont.Weight.Medium))
+        filters_layout = QVBoxLayout(filters_group)
+        filters_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # Type de filtre
+        filter_type_layout = QHBoxLayout()
+        filter_type_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        filter_label = QLabel("Type:")
+        filter_label.setFont(QFont("Inter", 12))
+        filter_label.setFixedWidth(50)
+        
+        self.filter_combo = QComboBox()
+        self.filter_combo.addItems([
+            "Passe-bas", "Passe-haut", "Passe-bande", 
+            "Coupe-bande", "Moyennage", "Médian"
+        ])
+        self.filter_combo.setFont(QFont("Inter", 11))
+        
+        filter_type_layout.addWidget(filter_label)
+        filter_type_layout.addWidget(self.filter_combo)
+        
+        # Fréquence de coupure
+        freq_layout = QHBoxLayout()
+        freq_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        freq_label = QLabel("Freq:")
+        freq_label.setFont(QFont("Inter", 12))
+        freq_label.setFixedWidth(50)
+        
+        self.freq_spinbox = QDoubleSpinBox()
+        self.freq_spinbox.setRange(0.1, 1000.0)
+        self.freq_spinbox.setValue(10.0)
+        self.freq_spinbox.setSuffix(" Hz")
+        self.freq_spinbox.setFont(QFont("Inter", 11))
+        
+        freq_layout.addWidget(freq_label)
+        freq_layout.addWidget(self.freq_spinbox)
+        
+        # Ordre du filtre
+        order_layout = QHBoxLayout()
+        order_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        order_label = QLabel("Ordre:")
+        order_label.setFont(QFont("Inter", 12))
+        order_label.setFixedWidth(50)
+        
+        self.order_spinbox = QSpinBox()
+        self.order_spinbox.setRange(1, 10)
+        self.order_spinbox.setValue(4)
+        self.order_spinbox.setFont(QFont("Inter", 11))
+        
+        order_layout.addWidget(order_label)
+        order_layout.addWidget(self.order_spinbox)
+        
+        # Bouton d'application
+        self.apply_filter_button = QPushButton("🔧 Appliquer le Filtre")
+        self.apply_filter_button.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        self.apply_filter_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        self.apply_filter_button.clicked.connect(self.apply_filter)
+        
+        # Style du bouton
+        self.apply_filter_button.setStyleSheet("""
+            QPushButton {
+                background-color: #00ACC1;
+                color: #F5FBFF;
+                border: none;
+                border-radius: 17px;
+                padding: 8px 13px;
+                font-weight: 600;
+            }
+            
+            QPushButton:hover {
+                background-color: #0097A7;
+            }
+            
+            QPushButton:pressed {
+                background-color: #00838F;
+            }
+        """)
+        
+        # Assemblage
+        filters_layout.addLayout(filter_type_layout)
+        filters_layout.addLayout(freq_layout)
+        filters_layout.addLayout(order_layout)
+        filters_layout.addWidget(self.apply_filter_button)
+        
+        parent_layout.addWidget(filters_group)
+        
+    def setup_analysis_section(self, parent_layout):
+        """Configure la section d'analyse"""
+        analysis_group = QGroupBox("Analyses")
+        analysis_group.setFont(QFont("Inter", 14, QFont.Weight.Medium))
+        analysis_layout = QVBoxLayout(analysis_group)
+        analysis_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # Boutons d'analyse
+        analysis_buttons = [
+            ("📊 Analyse Statistique", "statistics"),
+            ("🌊 Analyse Spectrale", "spectral"),
+            ("📈 Analyse Temporelle", "temporal"),
+            ("🔍 Détection de Pics", "peaks"),
+            ("📉 Analyse de Tendance", "trend"),
+            ("🎯 Corrélation", "correlation")
+        ]
+        
+        for button_text, analysis_type in analysis_buttons:
+            button = QPushButton(button_text)
+            button.setFont(QFont("Inter", 11, QFont.Weight.Medium))
+            button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+            button.clicked.connect(lambda checked, t=analysis_type: self.request_analysis(t))
+            
+            # Style du bouton
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #2B79B6;
+                    color: #F5FBFF;
+                    border: none;
+                    border-radius: 17px;
+                    padding: 8px 13px;
+                    font-weight: 500;
+                    text-align: left;
                 }
-            }
-            
-        except Exception as e:
-            self.spectral_results_text.setPlainText(f"Erreur lors de l'analyse spectrale: {str(e)}")
-    
-    def calculateSpectralStatistics(self, frequencies, spectra):
-        """
-        Calcul des statistiques spectrales
-        """
-        try:
-            results_text = "Résultats de l'analyse spectrale:\n\n"
-            
-            for i, spectrum in enumerate(spectra):
-                # Fréquence de pic
-                peak_idx = np.argmax(spectrum)
-                peak_freq = frequencies[peak_idx]
                 
-                # Fréquence moyenne
-                mean_freq = np.sum(frequencies * spectrum) / np.sum(spectrum)
+                QPushButton:hover {
+                    background-color: #1976D2;
+                }
                 
-                # Largeur spectrale
-                total_power = np.sum(spectrum)
-                cumulative_power = np.cumsum(spectrum)
-                f25_idx = np.where(cumulative_power >= 0.25 * total_power)[0][0]
-                f75_idx = np.where(cumulative_power >= 0.75 * total_power)[0][0]
-                spectral_width = frequencies[f75_idx] - frequencies[f25_idx]
-                
-                results_text += f"Capteur {i+1}:\n"
-                results_text += f"  Fréquence de pic: {peak_freq:.3f} Hz\n"
-                results_text += f"  Fréquence moyenne: {mean_freq:.3f} Hz\n"
-                results_text += f"  Largeur spectrale: {spectral_width:.3f} Hz\n\n"
+                QPushButton:pressed {
+                    background-color: #1565C0;
+                }
+            """)
             
-            self.spectral_results_text.setPlainText(results_text)
+            analysis_layout.addWidget(button)
             
-        except Exception as e:
-            self.spectral_results_text.setPlainText(f"Erreur dans le calcul des statistiques: {str(e)}")
-    
-    def performGodaAnalysis(self):
-        """
-        Exécution de l'analyse de Goda
-        """
-        if not self.session_data or not self.session_data.get('sensor_data'):
-            return
+        parent_layout.addWidget(analysis_group)
         
-        try:
-            # Simulation de l'analyse de Goda
-            sensor_data = self.session_data['sensor_data'][0]  # Premier capteur
-            
-            if len(sensor_data) < 100:
-                return
-            
-            # Conversion en mètres (supposé en mm)
-            data_m = np.array(sensor_data) / 1000.0
-            
-            # Détection des vagues (méthode zero-crossing simplifiée)
-            zero_crossings = np.where(np.diff(np.sign(data_m)))[0]
-            wave_heights = []
-            
-            for i in range(0, len(zero_crossings)-2, 2):
-                start_idx = zero_crossings[i]
-                end_idx = zero_crossings[i+2]
-                if end_idx < len(data_m):
-                    wave_segment = data_m[start_idx:end_idx]
-                    wave_height = np.max(wave_segment) - np.min(wave_segment)
-                    wave_heights.append(wave_height)
-            
-            wave_heights = np.array(wave_heights)
-            wave_heights = wave_heights[wave_heights > 0.01]  # Filtrer les petites vagues
-            
-            if len(wave_heights) == 0:
-                self.goda_results_text.setPlainText("Aucune vague détectée.")
-                return
-            
-            # Tri des hauteurs
-            sorted_heights = np.sort(wave_heights)[::-1]
-            
-            # Calcul des statistiques de Goda
-            n_waves = len(wave_heights)
-            h_max = np.max(wave_heights)
-            h_mean = np.mean(wave_heights)
-            h_rms = np.sqrt(np.mean(wave_heights**2))
-            h_13 = np.mean(sorted_heights[:max(1, n_waves//3)])  # H1/3
-            h_110 = np.mean(sorted_heights[:max(1, n_waves//10)])  # H1/10
-            
-            # Distribution de probabilité
-            probabilities = np.arange(1, len(sorted_heights)+1) / len(sorted_heights)
-            
-            # Affichage de la distribution
-            self.goda_plot.clear()
-            self.goda_plot.plot(probabilities, sorted_heights, pen='b', symbol='o', symbolSize=3)
-            
-            # Affichage de l'évolution temporelle
-            time_indices = np.linspace(0, self.session_data.get('duration', len(wave_heights)), len(wave_heights))
-            self.wave_height_plot.clear()
-            self.wave_height_plot.plot(time_indices, wave_heights, pen='r', symbol='o', symbolSize=2)
-            
-            # Résultats textuels
-            results_text = f"""Analyse de Goda terminée:
-
-Nombre de vagues: {n_waves}
-Hauteur maximale (Hmax): {h_max:.3f} m
-Hauteur moyenne (Hmean): {h_mean:.3f} m
-Hauteur RMS (Hrms): {h_rms:.3f} m
-Hauteur significative (H1/3): {h_13:.3f} m
-Hauteur 1/10 (H1/10): {h_110:.3f} m
-
-Ratio H1/3/Hmean: {h_13/h_mean:.2f}
-Ratio Hmax/H1/3: {h_max/h_13:.2f}"""
-            
-            self.goda_results_text.setPlainText(results_text)
-            
-            # Sauvegarde des résultats
-            self.analysis_results['goda'] = {
-                'n_waves': n_waves,
-                'h_max': h_max,
-                'h_mean': h_mean,
-                'h_rms': h_rms,
-                'h_13': h_13,
-                'h_110': h_110,
-                'wave_heights': wave_heights.tolist(),
-                'probabilities': probabilities.tolist()
-            }
-            
-        except Exception as e:
-            self.goda_results_text.setPlainText(f"Erreur lors de l'analyse de Goda: {str(e)}")
-    
-    def calculateStatistics(self):
-        """
-        Calcul des statistiques descriptives
-        """
-        if not self.session_data or not self.session_data.get('sensor_data'):
-            return
+    def setup_export_section(self, parent_layout):
+        """Configure la section d'export"""
+        export_group = QGroupBox("Export")
+        export_group.setFont(QFont("Inter", 14, QFont.Weight.Medium))
+        export_layout = QVBoxLayout(export_group)
+        export_layout.setSpacing(FIBONACCI_SPACING[1])
         
-        try:
-            sensor_data = self.session_data['sensor_data']
-            
-            # Calcul des statistiques pour chaque capteur
-            for i, data in enumerate(sensor_data[:4]):
-                if len(data) == 0:
-                    continue
-                
-                data_array = np.array(data)
-                
-                # Statistiques descriptives
-                mean_val = np.mean(data_array)
-                std_val = np.std(data_array)
-                min_val = np.min(data_array)
-                max_val = np.max(data_array)
-                median_val = np.median(data_array)
-                
-                # Asymétrie et aplatissement
-                from scipy import stats
-                skewness = stats.skew(data_array)
-                kurtosis = stats.kurtosis(data_array)
-                rms_val = np.sqrt(np.mean(data_array**2))
-                
-                # Remplissage du tableau
-                stats_values = [mean_val, std_val, min_val, max_val, median_val, skewness, kurtosis, rms_val]
-                
-                for j, value in enumerate(stats_values):
-                    item = QTableWidgetItem(f"{value:.3f}")
-                    item.setFlags(Qt.ItemIsEnabled)
-                    self.stats_table.setItem(j, i+1, item)
-            
-            # Tests statistiques
-            self.performStatisticalTests()
-            
-        except ImportError:
-            # Si scipy n'est pas disponible, calcul simplifié
-            for i, data in enumerate(sensor_data[:4]):
-                if len(data) == 0:
-                    continue
-                
-                data_array = np.array(data)
-                
-                # Statistiques de base seulement
-                mean_val = np.mean(data_array)
-                std_val = np.std(data_array)
-                min_val = np.min(data_array)
-                max_val = np.max(data_array)
-                median_val = np.median(data_array)
-                rms_val = np.sqrt(np.mean(data_array**2))
-                
-                stats_values = [mean_val, std_val, min_val, max_val, median_val, 0.0, 0.0, rms_val]
-                
-                for j, value in enumerate(stats_values):
-                    item = QTableWidgetItem(f"{value:.3f}")
-                    item.setFlags(Qt.ItemIsEnabled)
-                    self.stats_table.setItem(j, i+1, item)
-            
-            self.statistical_tests_text.setPlainText("Tests statistiques non disponibles (scipy requis)")
+        # Boutons d'export
+        export_buttons = [
+            ("💾 Export CSV", "csv"),
+            ("📊 Export Excel", "excel"),
+            ("📈 Export Graphique", "image"),
+            ("📋 Rapport PDF", "pdf")
+        ]
         
-        except Exception as e:
-            self.statistical_tests_text.setPlainText(f"Erreur lors du calcul des statistiques: {str(e)}")
-    
-    def performStatisticalTests(self):
-        """
-        Exécution des tests statistiques
-        """
-        try:
-            from scipy import stats
+        for button_text, export_type in export_buttons:
+            button = QPushButton(button_text)
+            button.setFont(QFont("Inter", 11, QFont.Weight.Medium))
+            button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+            button.clicked.connect(lambda checked, t=export_type: self.request_export(t))
             
-            sensor_data = self.session_data['sensor_data']
-            test_results = "Tests Statistiques:\n\n"
-            
-            for i, data in enumerate(sensor_data[:4]):
-                if len(data) < 8:  # Minimum pour les tests
-                    continue
+            # Style du bouton
+            button.setStyleSheet("""
+                QPushButton {
+                    background-color: #055080;
+                    color: #F5FBFF;
+                    border: none;
+                    border-radius: 17px;
+                    padding: 8px 13px;
+                    font-weight: 500;
+                    text-align: left;
+                }
                 
-                data_array = np.array(data)
+                QPushButton:hover {
+                    background-color: #044A73;
+                }
                 
-                # Test de normalité (Shapiro-Wilk)
-                if len(data_array) <= 5000:  # Limitation de Shapiro-Wilk
-                    stat, p_value = stats.shapiro(data_array[:5000])
-                    test_results += f"Capteur {i+1} - Normalité (Shapiro-Wilk):\n"
-                    test_results += f"  Statistique: {stat:.4f}\n"
-                    test_results += f"  p-value: {p_value:.4f}\n"
-                    test_results += f"  Normal: {'Oui' if p_value > 0.05 else 'Non'}\n\n"
+                QPushButton:pressed {
+                    background-color: #033D66;
+                }
+            """)
             
-            self.statistical_tests_text.setPlainText(test_results)
+            export_layout.addWidget(button)
             
-        except ImportError:
-            self.statistical_tests_text.setPlainText("Tests statistiques non disponibles (scipy requis)")
-        except Exception as e:
-            self.statistical_tests_text.setPlainText(f"Erreur lors des tests statistiques: {str(e)}")
-    
-    def generateSummaryReport(self):
-        """
-        Génération du rapport de synthèse
-        """
-        if not self.session_data:
-            return
+        parent_layout.addWidget(export_group)
         
-        # Génération du rapport complet
-        report = self.createFullReport()
-        self.summary_report_text.setPlainText(report)
-        self.export_pdf_btn.setEnabled(True)
-    
-    def createFullReport(self):
-        """
-        Création du rapport complet
-        """
-        report = f"""RAPPORT D'ANALYSE CHNEOWAVE
-{'='*50}
-
-DATE D'ANALYSE: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}
-
-1. INFORMATIONS GÉNÉRALES
-{'-'*30}
-Durée d'acquisition: {self.session_data.get('duration', 0):.1f} s
-Fréquence d'échantillonnage: {self.session_data.get('sample_rate', 0):.1f} Hz
-Nombre de capteurs: {self.session_data.get('sensor_count', 0)}
-Nombre de points: {len(self.session_data.get('time_data', []))}
-
-2. RÉSULTATS D'ANALYSE
-{'-'*30}"""
+    def setup_connections(self):
+        """Configure les connexions de signaux"""
+        pass  # Les connexions sont faites dans les méthodes setup
         
-        # Ajout des résultats spectraux
-        if 'spectral' in self.analysis_results:
-            report += "\n\nANALYSE SPECTRALE:\n"
-            report += "Analyse spectrale réalisée avec succès.\n"
-            report += f"Paramètres: Fenêtre {self.analysis_results['spectral']['parameters']['window_size']} points\n"
-        
-        # Ajout des résultats de Goda
-        if 'goda' in self.analysis_results:
-            goda = self.analysis_results['goda']
-            report += "\n\nANALYSE DE GODA:\n"
-            report += f"Nombre de vagues détectées: {goda['n_waves']}\n"
-            report += f"Hauteur significative (H1/3): {goda['h_13']:.3f} m\n"
-            report += f"Hauteur maximale: {goda['h_max']:.3f} m\n"
-            report += f"Hauteur moyenne: {goda['h_mean']:.3f} m\n"
-        
-        report += "\n\n3. CONCLUSIONS\n"
-        report += "-"*30
-        report += "\nAnalyse terminée avec succès.\n"
-        report += "Toutes les données ont été traitées selon les standards maritimes.\n"
-        report += "\nRapport généré par CHNeoWave v1.0.0"
-        
-        return report
-    
-    def completeAnalysis(self):
-        """
-        Finalisation de l'analyse et émission du signal
-        """
-        # Compilation des résultats finaux
-        final_results = {
-            'session_data': self.session_data,
-            'analysis_results': self.analysis_results,
-            'report': self.summary_report_text.toPlainText(),
-            'completion_time': datetime.now().isoformat(),
-            'status': 'completed'
+    def apply_filter(self):
+        """Applique le filtre sélectionné"""
+        filter_type = self.filter_combo.currentText()
+        params = {
+            'frequency': self.freq_spinbox.value(),
+            'order': self.order_spinbox.value()
         }
         
-        # Émission du signal vers le MainController
-        self.analysisFinished.emit(final_results)
+        self.filter_applied.emit(filter_type, params)
+        
+    def request_analysis(self, analysis_type: str):
+        """Demande une analyse"""
+        params = {}  # Paramètres par défaut
+        self.analysis_requested.emit(analysis_type, params)
+        
+    def request_export(self, export_type: str):
+        """Demande un export"""
+        self.export_requested.emit(export_type)
+
+
+class AnalysisResultsArea(QFrame):
+    """
+    Zone d'affichage des résultats d'analyse
+    """
     
-    def resetAnalysis(self):
-        """
-        Réinitialisation de l'analyse
-        """
-        self.session_data = None
-        self.analysis_results.clear()
+    def __init__(self, parent=None):
+        super().__init__(parent)
         
-        # Nettoyage des graphiques
-        self.spectrum_plot.clear()
-        self.transfer_plot.clear()
-        self.goda_plot.clear()
-        self.wave_height_plot.clear()
-        self.histogram_plot.clear()
-        self.qq_plot.clear()
+        self.setup_ui()
         
-        # Nettoyage des textes
-        self.spectral_results_text.clear()
-        self.goda_results_text.clear()
-        self.statistical_tests_text.clear()
-        self.summary_report_text.clear()
+    def setup_ui(self):
+        """Configure l'interface des résultats"""
+        self.setObjectName("analysis_results_area")
         
-        # Nettoyage du tableau
-        for i in range(self.stats_table.rowCount()):
-            for j in range(1, self.stats_table.columnCount()):
-                self.stats_table.setItem(i, j, QTableWidgetItem(""))
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[2], 
+                                      FIBONACCI_SPACING[2], FIBONACCI_SPACING[2])
+        main_layout.setSpacing(FIBONACCI_SPACING[2])
         
-        # Désactivation des boutons
-        self.export_button.setEnabled(False)
-        self.export_pdf_btn.setEnabled(False)
-    
-    def reset_view(self):
-        """
-        Réinitialise la vue pour un nouveau projet
-        """
-        self.resetAnalysis()
-    
-    def set_acquisition_data(self, acquisition_data):
-        """
-        Configure la vue avec les données d'acquisition
-        """
-        self.session_data = acquisition_data
+        # En-tête
+        self.setup_header(main_layout)
         
-        # Activation automatique de l'analyse spectrale
-        if self.session_data and self.session_data.get('sensor_data'):
-            self.performSpectralAnalysis()
-            self.performGodaAnalysis()
-            self.calculateStatistics()
-            self.generateSummaryReport()
+        # Onglets de résultats
+        self.setup_results_tabs(main_layout)
+        
+        # Style de base
+        self.setStyleSheet("""
+            QFrame#analysis_results_area {
+                background-color: #F5FBFF;
+            }
+        """)
+        
+    def setup_header(self, parent_layout):
+        """Configure l'en-tête des résultats"""
+        header_frame = QFrame()
+        header_frame.setFixedHeight(55)  # Fibonacci
+        
+        header_layout = QHBoxLayout(header_frame)
+        header_layout.setContentsMargins(0, FIBONACCI_SPACING[1], 0, FIBONACCI_SPACING[1])
+        header_layout.setSpacing(FIBONACCI_SPACING[2])
+        
+        # Titre
+        title_label = QLabel("Résultats d'Analyse")
+        title_label.setFont(QFont("Inter", 21, QFont.Weight.Bold))
+        title_label.setStyleSheet("color: #0A1929;")
+        
+        # Indicateurs de statut
+        status_layout = QHBoxLayout()
+        status_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # Statut de l'analyse
+        self.analysis_status_label = QLabel("📊 Prêt")
+        self.analysis_status_label.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        self.analysis_status_label.setStyleSheet("""
+            background-color: rgba(76, 175, 80, 0.1);
+            color: #4CAF50;
+            padding: 5px 10px;
+            border-radius: 10px;
+        """)
+        
+        # Nombre d'analyses
+        self.analysis_count_label = QLabel("0 Analyses")
+        self.analysis_count_label.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        self.analysis_count_label.setStyleSheet("""
+            background-color: rgba(43, 121, 182, 0.1);
+            color: #2B79B6;
+            padding: 5px 10px;
+            border-radius: 10px;
+        """)
+        
+        status_layout.addWidget(self.analysis_status_label)
+        status_layout.addWidget(self.analysis_count_label)
+        
+        # Assemblage
+        header_layout.addWidget(title_label)
+        header_layout.addStretch()
+        header_layout.addLayout(status_layout)
+        
+        parent_layout.addWidget(header_frame)
+        
+    def setup_results_tabs(self, parent_layout):
+        """Configure les onglets de résultats"""
+        self.tab_widget = QTabWidget()
+        self.tab_widget.setFont(QFont("Inter", 12))
+        
+        # Onglet Graphiques
+        graphs_tab = self.create_graphs_tab()
+        self.tab_widget.addTab(graphs_tab, "📈 Graphiques")
+        
+        # Onglet Statistiques
+        stats_tab = self.create_statistics_tab()
+        self.tab_widget.addTab(stats_tab, "📊 Statistiques")
+        
+        # Onglet Spectral
+        spectral_tab = self.create_spectral_tab()
+        self.tab_widget.addTab(spectral_tab, "🌊 Spectral")
+        
+        # Onglet Rapport
+        report_tab = self.create_report_tab()
+        self.tab_widget.addTab(report_tab, "📋 Rapport")
+        
+        # Style des onglets
+        self.tab_widget.setStyleSheet("""
+            QTabWidget::pane {
+                border: 2px solid #E0E7FF;
+                border-radius: 13px;
+                background-color: white;
+            }
             
-            # Activation du bouton suivant
-            self.export_button.setEnabled(True)
+            QTabWidget::tab-bar {
+                alignment: left;
+            }
+            
+            QTabBar::tab {
+                background-color: #F5FBFF;
+                color: #445868;
+                padding: 8px 21px;
+                margin-right: 2px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                font-weight: 500;
+            }
+            
+            QTabBar::tab:selected {
+                background-color: #00ACC1;
+                color: #F5FBFF;
+                font-weight: 600;
+            }
+            
+            QTabBar::tab:hover:!selected {
+                background-color: rgba(0, 172, 193, 0.1);
+                color: #00ACC1;
+            }
+        """)
+        
+        parent_layout.addWidget(self.tab_widget)
+        
+    def create_graphs_tab(self) -> QWidget:
+        """Crée l'onglet des graphiques"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[2], 
+                                 FIBONACCI_SPACING[2], FIBONACCI_SPACING[2])
+        layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # Zone de graphique principal
+        main_graph_frame = QFrame()
+        main_graph_frame.setObjectName("analysis_main_graph")
+        main_graph_frame.setMinimumHeight(400)
+        main_graph_frame.setStyleSheet("""
+            QFrame#analysis_main_graph {
+                background-color: #F5FBFF;
+                border: 1px solid #E0E7FF;
+                border-radius: 8px;
+            }
+        """)
+        
+        main_graph_layout = QVBoxLayout(main_graph_frame)
+        main_graph_placeholder = QLabel("📈 Graphique d'Analyse Principal")
+        main_graph_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        main_graph_placeholder.setFont(QFont("Inter", 16))
+        main_graph_placeholder.setStyleSheet("color: #445868;")
+        main_graph_layout.addWidget(main_graph_placeholder)
+        
+        # Contrôles du graphique
+        controls_frame = QFrame()
+        controls_frame.setFixedHeight(55)  # Fibonacci
+        controls_layout = QHBoxLayout(controls_frame)
+        controls_layout.setSpacing(FIBONACCI_SPACING[2])
+        
+        # Type de graphique
+        graph_type_label = QLabel("Type:")
+        graph_type_label.setFont(QFont("Inter", 12))
+        
+        graph_type_combo = QComboBox()
+        graph_type_combo.addItems(["Ligne", "Points", "Barres", "Histogramme"])
+        graph_type_combo.setFont(QFont("Inter", 12))
+        
+        # Échelle
+        scale_label = QLabel("Échelle:")
+        scale_label.setFont(QFont("Inter", 12))
+        
+        scale_combo = QComboBox()
+        scale_combo.addItems(["Linéaire", "Logarithmique"])
+        scale_combo.setFont(QFont("Inter", 12))
+        
+        # Boutons d'action
+        zoom_button = QPushButton("🔍 Zoom")
+        zoom_button.setFont(QFont("Inter", 11, QFont.Weight.Medium))
+        zoom_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        
+        reset_button = QPushButton("🔄 Reset")
+        reset_button.setFont(QFont("Inter", 11, QFont.Weight.Medium))
+        reset_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        
+        # Style des boutons
+        button_style = """
+            QPushButton {
+                background-color: #2B79B6;
+                color: #F5FBFF;
+                border: none;
+                border-radius: 17px;
+                padding: 8px 13px;
+                font-weight: 500;
+            }
+            
+            QPushButton:hover {
+                background-color: #1976D2;
+            }
+            
+            QPushButton:pressed {
+                background-color: #1565C0;
+            }
+        """
+        
+        zoom_button.setStyleSheet(button_style)
+        reset_button.setStyleSheet(button_style)
+        
+        controls_layout.addWidget(graph_type_label)
+        controls_layout.addWidget(graph_type_combo)
+        controls_layout.addWidget(scale_label)
+        controls_layout.addWidget(scale_combo)
+        controls_layout.addStretch()
+        controls_layout.addWidget(zoom_button)
+        controls_layout.addWidget(reset_button)
+        
+        layout.addWidget(main_graph_frame)
+        layout.addWidget(controls_frame)
+        
+        return tab
+        
+    def create_statistics_tab(self) -> QWidget:
+        """Crée l'onglet des statistiques"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[2], 
+                                 FIBONACCI_SPACING[2], FIBONACCI_SPACING[2])
+        layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # Tableau des statistiques
+        self.stats_table = QTableWidget()
+        self.stats_table.setColumnCount(4)
+        self.stats_table.setHorizontalHeaderLabels(["Paramètre", "Canal 1", "Canal 2", "Canal 3"])
+        self.stats_table.setFont(QFont("Inter", 11))
+        
+        # Données d'exemple
+        stats_data = [
+            ["Moyenne", "1.234", "2.567", "3.890"],
+            ["Médiane", "1.235", "2.568", "3.891"],
+            ["Écart-type", "0.123", "0.256", "0.389"],
+            ["Variance", "0.015", "0.066", "0.151"],
+            ["Min", "0.890", "1.234", "2.567"],
+            ["Max", "1.678", "3.456", "4.789"],
+            ["RMS", "1.240", "2.570", "3.895"],
+            ["Kurtosis", "2.98", "3.12", "2.87"],
+            ["Skewness", "0.12", "-0.05", "0.23"]
+        ]
+        
+        self.stats_table.setRowCount(len(stats_data))
+        
+        for row, data in enumerate(stats_data):
+            for col, value in enumerate(data):
+                item = QTableWidgetItem(value)
+                item.setFont(QFont("Inter", 11))
+                if col == 0:  # Première colonne (paramètre)
+                    item.setFont(QFont("Inter", 11, QFont.Weight.Medium))
+                self.stats_table.setItem(row, col, item)
+                
+        # Configuration du tableau
+        header = self.stats_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self.stats_table.verticalHeader().setVisible(False)
+        
+        # Style du tableau
+        self.stats_table.setStyleSheet("""
+            QTableWidget {
+                background-color: white;
+                border: 1px solid #E0E7FF;
+                border-radius: 8px;
+                gridline-color: #E0E7FF;
+            }
+            
+            QTableWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #F0F0F0;
+            }
+            
+            QTableWidget::item:selected {
+                background-color: rgba(0, 172, 193, 0.2);
+            }
+            
+            QHeaderView::section {
+                background-color: #F5FBFF;
+                color: #0A1929;
+                padding: 8px;
+                border: none;
+                border-bottom: 2px solid #E0E7FF;
+                font-weight: 600;
+            }
+        """)
+        
+        layout.addWidget(self.stats_table)
+        
+        return tab
+        
+    def create_spectral_tab(self) -> QWidget:
+        """Crée l'onglet spectral"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[2], 
+                                 FIBONACCI_SPACING[2], FIBONACCI_SPACING[2])
+        layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # Contrôles spectraux
+        controls_frame = QFrame()
+        controls_frame.setFixedHeight(55)  # Fibonacci
+        controls_layout = QHBoxLayout(controls_frame)
+        controls_layout.setSpacing(FIBONACCI_SPACING[2])
+        
+        # Type d'analyse
+        analysis_label = QLabel("Analyse:")
+        analysis_label.setFont(QFont("Inter", 12))
+        
+        analysis_combo = QComboBox()
+        analysis_combo.addItems(["FFT", "PSD", "Spectrogramme", "Cohérence"])
+        analysis_combo.setFont(QFont("Inter", 12))
+        
+        # Fenêtrage
+        window_label = QLabel("Fenêtre:")
+        window_label.setFont(QFont("Inter", 12))
+        
+        window_combo = QComboBox()
+        window_combo.addItems(["Hanning", "Hamming", "Blackman", "Kaiser"])
+        window_combo.setFont(QFont("Inter", 12))
+        
+        # Bouton de calcul
+        compute_button = QPushButton("🔬 Calculer")
+        compute_button.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        compute_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        compute_button.setStyleSheet("""
+            QPushButton {
+                background-color: #00ACC1;
+                color: #F5FBFF;
+                border: none;
+                border-radius: 17px;
+                padding: 8px 13px;
+                font-weight: 600;
+            }
+            
+            QPushButton:hover {
+                background-color: #0097A7;
+            }
+            
+            QPushButton:pressed {
+                background-color: #00838F;
+            }
+        """)
+        
+        controls_layout.addWidget(analysis_label)
+        controls_layout.addWidget(analysis_combo)
+        controls_layout.addWidget(window_label)
+        controls_layout.addWidget(window_combo)
+        controls_layout.addStretch()
+        controls_layout.addWidget(compute_button)
+        
+        # Zone de graphique spectral
+        spectral_frame = QFrame()
+        spectral_frame.setObjectName("spectral_graph")
+        spectral_frame.setStyleSheet("""
+            QFrame#spectral_graph {
+                background-color: #F5FBFF;
+                border: 1px solid #E0E7FF;
+                border-radius: 8px;
+            }
+        """)
+        
+        spectral_layout = QVBoxLayout(spectral_frame)
+        spectral_placeholder = QLabel("🌊 Analyse Spectrale")
+        spectral_placeholder.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        spectral_placeholder.setFont(QFont("Inter", 16))
+        spectral_placeholder.setStyleSheet("color: #445868;")
+        spectral_layout.addWidget(spectral_placeholder)
+        
+        layout.addWidget(controls_frame)
+        layout.addWidget(spectral_frame)
+        
+        return tab
+        
+    def create_report_tab(self) -> QWidget:
+        """Crée l'onglet de rapport"""
+        tab = QWidget()
+        layout = QVBoxLayout(tab)
+        layout.setContentsMargins(FIBONACCI_SPACING[2], FIBONACCI_SPACING[2], 
+                                 FIBONACCI_SPACING[2], FIBONACCI_SPACING[2])
+        layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        # En-tête du rapport
+        report_header = QFrame()
+        report_header.setFixedHeight(89)  # Fibonacci
+        report_header_layout = QVBoxLayout(report_header)
+        report_header_layout.setSpacing(FIBONACCI_SPACING[0])
+        
+        report_title = QLabel("Rapport d'Analyse")
+        report_title.setFont(QFont("Inter", 18, QFont.Weight.Bold))
+        report_title.setStyleSheet("color: #0A1929;")
+        
+        report_date = QLabel("Généré le: 2025-01-XX à 10:30")
+        report_date.setFont(QFont("Inter", 12))
+        report_date.setStyleSheet("color: #445868;")
+        
+        report_header_layout.addWidget(report_title)
+        report_header_layout.addWidget(report_date)
+        
+        # Contenu du rapport
+        self.report_text = QTextEdit()
+        self.report_text.setReadOnly(True)
+        self.report_text.setFont(QFont("Inter", 11))
+        
+        # Contenu d'exemple
+        report_content = """
+# Rapport d'Analyse des Données
+
+## Résumé Exécutif
+Analyse complète des données d'acquisition maritime effectuée le 2025-01-XX.
+
+## Données Analysées
+- Fichier: acquisition_2025_01_15_10h30.csv
+- Durée: 60 secondes
+- Fréquence d'échantillonnage: 1000 Hz
+- Nombre de canaux: 4
+
+## Résultats Statistiques
+### Canal 1 - Pression
+- Moyenne: 1.234 bar
+- Écart-type: 0.123 bar
+- Plage: 0.890 - 1.678 bar
+
+### Canal 2 - Température
+- Moyenne: 20.5°C
+- Écart-type: 0.8°C
+- Plage: 19.2 - 22.1°C
+
+## Analyse Spectrale
+- Fréquence dominante: 2.5 Hz
+- Harmoniques détectées: 5.0 Hz, 7.5 Hz
+- Bruit de fond: -40 dB
+
+## Conclusions
+1. Les données présentent une bonne qualité signal/bruit
+2. Aucune anomalie détectée
+3. Les mesures sont conformes aux spécifications
+
+## Recommandations
+- Maintenir les paramètres d'acquisition actuels
+- Surveiller l'évolution de la fréquence dominante
+- Effectuer une calibration mensuelle
+        """
+        
+        self.report_text.setPlainText(report_content)
+        
+        # Style du rapport
+        self.report_text.setStyleSheet("""
+            QTextEdit {
+                background-color: white;
+                border: 1px solid #E0E7FF;
+                border-radius: 8px;
+                padding: 13px;
+                line-height: 1.5;
+            }
+        """)
+        
+        # Boutons d'action
+        actions_layout = QHBoxLayout()
+        actions_layout.setSpacing(FIBONACCI_SPACING[1])
+        
+        generate_button = QPushButton("🔄 Régénérer")
+        generate_button.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        generate_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        
+        export_pdf_button = QPushButton("📄 Export PDF")
+        export_pdf_button.setFont(QFont("Inter", 12, QFont.Weight.Medium))
+        export_pdf_button.setFixedHeight(FIBONACCI_SPACING[3])  # 34px
+        
+        # Style des boutons
+        button_style = """
+            QPushButton {
+                background-color: #055080;
+                color: #F5FBFF;
+                border: none;
+                border-radius: 17px;
+                padding: 8px 13px;
+                font-weight: 500;
+            }
+            
+            QPushButton:hover {
+                background-color: #044A73;
+            }
+            
+            QPushButton:pressed {
+                background-color: #033D66;
+            }
+        """
+        
+        generate_button.setStyleSheet(button_style)
+        export_pdf_button.setStyleSheet(button_style)
+        
+        actions_layout.addStretch()
+        actions_layout.addWidget(generate_button)
+        actions_layout.addWidget(export_pdf_button)
+        
+        layout.addWidget(report_header)
+        layout.addWidget(self.report_text)
+        layout.addLayout(actions_layout)
+        
+        return tab
+        
+    def update_analysis_status(self, status: str, count: int = 0):
+        """Met à jour le statut d'analyse"""
+        self.analysis_status_label.setText(status)
+        self.analysis_count_label.setText(f"{count} Analyses")
+
+
+class AnalysisView(QWidget):
+    """
+    Vue principale d'analyse avec design maritime
+    """
     
-    def get_analysis_results(self):
-        """
-        Retourne les résultats d'analyse pour le workflow
-        """
+    # Signaux
+    analysis_completed = Signal(str, dict)  # type d'analyse, résultats
+    filter_applied = Signal(str, dict)      # type de filtre, paramètres
+    data_exported = Signal(str)             # chemin du fichier exporté
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        self.is_dark_mode = False
+        self.analysis_count = 0
+        
+        self.setup_ui()
+        self.setup_connections()
+        
+    def setup_ui(self):
+        """Configure l'interface principale"""
+        self.setObjectName("analysis_view")
+        
+        # Layout principal
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+        
+        # Splitter horizontal (outils + résultats)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        
+        # Panneau d'outils
+        self.tools_panel = AnalysisToolsPanel()
+        splitter.addWidget(self.tools_panel)
+        
+        # Zone de résultats
+        self.results_area = AnalysisResultsArea()
+        splitter.addWidget(self.results_area)
+        
+        # Proportions du splitter (Golden Ratio)
+        tools_width = int(280 * GOLDEN_RATIO)  # ~453px
+        results_width = int(tools_width * GOLDEN_RATIO)  # ~733px
+        splitter.setSizes([tools_width, results_width])
+        splitter.setCollapsible(0, False)  # Outils non collapsible
+        splitter.setCollapsible(1, False)  # Résultats non collapsible
+        
+        main_layout.addWidget(splitter)
+        
+        # Style de base
+        self.setStyleSheet("""
+            QWidget#analysis_view {
+                background-color: #F5FBFF;
+            }
+        """)
+        
+    def setup_connections(self):
+        """Configure les connexions de signaux"""
+        # Connexions du panneau d'outils
+        self.tools_panel.analysis_requested.connect(self.on_analysis_requested)
+        self.tools_panel.filter_applied.connect(self.on_filter_applied)
+        self.tools_panel.export_requested.connect(self.on_export_requested)
+        
+    def on_analysis_requested(self, analysis_type: str, params: dict):
+        """Gestionnaire de demande d'analyse"""
+        print(f"Analyse demandée: {analysis_type} avec paramètres: {params}")
+        
+        # Simuler l'analyse
+        self.analysis_count += 1
+        self.results_area.update_analysis_status(f"🔬 Analyse en cours...", self.analysis_count)
+        
+        # Émettre le signal
+        results = {"status": "completed", "data": "sample_results"}
+        self.analysis_completed.emit(analysis_type, results)
+        
+        # Mettre à jour le statut
+        self.results_area.update_analysis_status(f"✅ Analyse terminée", self.analysis_count)
+        
+    def on_filter_applied(self, filter_type: str, params: dict):
+        """Gestionnaire d'application de filtre"""
+        print(f"Filtre appliqué: {filter_type} avec paramètres: {params}")
+        
+        # Émettre le signal
+        self.filter_applied.emit(filter_type, params)
+        
+    def on_export_requested(self, export_type: str):
+        """Gestionnaire de demande d'export"""
+        print(f"Export demandé: {export_type}")
+        
+        # Simuler l'export
+        filename = f"analysis_export.{export_type}"
+        self.data_exported.emit(filename)
+        
+    def set_theme(self, is_dark: bool):
+        """Applique le thème sombre ou clair"""
+        self.is_dark_mode = is_dark
+        
+        if is_dark:
+            # Thème sombre
+            self.setStyleSheet("""
+                QWidget#analysis_view {
+                    background-color: #0A1929;
+                    color: #F5FBFF;
+                }
+            """)
+        else:
+            # Thème clair
+            self.setStyleSheet("""
+                QWidget#analysis_view {
+                    background-color: #F5FBFF;
+                    color: #0A1929;
+                }
+            """)
+            
+    def load_data_file(self, file_path: str):
+        """Charge un fichier de données pour analyse"""
+        print(f"Chargement du fichier: {file_path}")
+        # Logique de chargement des données
+        
+    def get_analysis_results(self) -> dict:
+        """Retourne les résultats d'analyse actuels"""
         return {
-            'session_data': self.session_data,
-            'analysis_results': self.analysis_results,
-            'report': self.summary_report_text.toPlainText() if hasattr(self, 'summary_report_text') else '',
-            'completion_time': datetime.now().isoformat(),
-            'status': 'completed' if self.analysis_results else 'pending'
+            "analysis_count": self.analysis_count,
+            "current_data": "sample_data",
+            "last_analysis": "spectral"
         }
+        
+    def clear_results(self):
+        """Efface tous les résultats d'analyse"""
+        self.analysis_count = 0
+        self.results_area.update_analysis_status("📊 Prêt", 0)

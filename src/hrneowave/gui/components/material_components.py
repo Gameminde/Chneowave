@@ -24,7 +24,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import (
     Qt, QTimer, Signal, QObject, QPropertyAnimation,
     QEasingCurve, QRect, QPoint, QSize, QParallelAnimationGroup,
-    QSequentialAnimationGroup, pyqtProperty
+    QSequentialAnimationGroup, Property
 )
 from PySide6.QtGui import (
     QColor, QFont, QPalette, QPainter, QPen, QBrush,
@@ -158,6 +158,21 @@ class MaterialTheme:
     
     # Mode sombre
     is_dark: bool = False
+    
+    # Instance globale du thème actuel
+    _current_theme: Optional['MaterialTheme'] = None
+    
+    @classmethod
+    def get_current_theme(cls) -> 'MaterialTheme':
+        """Retourne le thème actuel ou un thème par défaut"""
+        if cls._current_theme is None:
+            cls._current_theme = cls()
+        return cls._current_theme
+    
+    @classmethod
+    def set_current_theme(cls, theme: 'MaterialTheme'):
+        """Définit le thème actuel"""
+        cls._current_theme = theme
     
     def to_dark_theme(self) -> 'MaterialTheme':
         """Convertit vers un thème sombre"""

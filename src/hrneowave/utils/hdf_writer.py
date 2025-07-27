@@ -10,6 +10,10 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import hashlib
 from datetime import datetime
+import json
+import tempfile
+import os
+import shutil
 
 class HDF5Writer:
     """
@@ -41,7 +45,7 @@ class HDF5Writer:
                              data: np.ndarray,
                              sampling_rate: float,
                              channel_names: list,
-                             metadata: Optional[Dict[str, Any]] = None) -> str:
+                             metadata: Optional[Dict[str, Any]] = None):
         """
         Écrit les données d'acquisition en format HDF5 standardisé
         
@@ -50,83 +54,71 @@ class HDF5Writer:
             sampling_rate: Fréquence d'échantillonnage en Hz
             channel_names: Noms des canaux
             metadata: Métadonnées additionnelles
-            
-        Returns:
-            Hash SHA-256 du fichier créé
         """
         if self.file_handle is None:
             raise RuntimeError("Fichier HDF5 non ouvert")
             
         # Dataset principal des données brutes
-        # Permettre le redimensionnement pour les gros datasets
         raw_dataset = self.file_handle.create_dataset(
             '/raw', 
             data=data,
             compression='gzip',
             compression_opts=6,
-            shuffle=True,
-            maxshape=(None, data.shape[1])  # Permettre l'extension en nombre d'échantillons
+            shuffle=True
         )
         
-        # Attributs obligatoires
-        raw_dataset.attrs['fs'] = sampling_rate
-        raw_dataset.attrs['n_channels'] = data.shape[1]
-        raw_dataset.attrs['n_samples'] = data.shape[0]
-        raw_dataset.attrs['duration'] = data.shape[0] / sampling_rate
-        raw_dataset.attrs['created_at'] = datetime.now().isoformat()
-        raw_dataset.attrs['software'] = 'CHNeoWave v1.1.0-beta'
-        
-        # Noms des canaux
-        channel_names_encoded = [name.encode('utf-8') for name in channel_names]
-        raw_dataset.attrs['channel_names'] = channel_names_encoded
-        
-        # Métadonnées additionnelles
+        # Attributs et métadonnées
+        attrs = {
+            'fs': sampling_rate,
+            'n_channels': data.shape[1],
+            'n_samples': data.shape[0],
+            'duration': data.shape[0] / sampling_rate,
+            'created_at': datetime.now().isoformat(),
+            'software': 'CHNeoWave v1.1.0-beta',
+            'channel_names': [name.encode('utf-8') for name in channel_names]
+        }
         if metadata:
-            for key, value in metadata.items():
-                if isinstance(value, str):
-                    raw_dataset.attrs[key] = value.encode('utf-8')
-                else:
-                    raw_dataset.attrs[key] = value
-                    
-        # Forcer l'écriture
+            attrs.update(metadata)
+
+        for key, value in attrs.items():
+            if isinstance(value, dict):
+                # Sérialiser les dictionnaires (comme metadata) en JSON
+                self.file_handle.attrs[key] = json.dumps(value)
+            else:
+                self.file_handle.attrs[key] = value
+
+        # Calcul et écriture du hash
         self.file_handle.flush()
-        
-        # Calculer le hash SHA-256 et l'ajouter aux attributs du fichier principal
-        file_hash = self._calculate_file_hash()
-        
-        # Ajouter le hash aux attributs du fichier principal (pas du dataset)
-        try:
-            self.file_handle.attrs['sha256'] = file_hash
-            self.file_handle.flush()
-        except Exception:
-            # Si l'ajout échoue, continuer sans le hash
-            pass
-        
-        return file_hash
-        
-    def _calculate_file_hash(self) -> str:
-        """
-        Calcule le hash SHA-256 du fichier HDF5
-        
-        Returns:
-            Hash SHA-256 en hexadécimal
-        """
-        # Fermer temporairement pour calculer le hash
-        if self.file_handle:
-            self.file_handle.close()
-            
-        # Calculer le hash
+        file_hash = self._calculate_internal_hash(self.file_handle)
+        self.file_handle.attrs['sha256'] = file_hash
+                    
+
+
+    @staticmethod
+    def _calculate_internal_hash(h5_file: h5py.File) -> str:
+        """Calcule un hash SHA-256 basé sur le contenu interne du fichier HDF5."""
         sha256_hash = hashlib.sha256()
-        with open(self.filepath, 'rb') as f:
-            for chunk in iter(lambda: f.read(4096), b""):
-                sha256_hash.update(chunk)
-                
-        file_hash = sha256_hash.hexdigest()
-        
-        # Rouvrir le fichier
-        self.file_handle = h5py.File(self.filepath, 'a')
-        
-        return file_hash
+
+        def hash_attrs(attrs):
+            for key, value in sorted(attrs.items()):
+                if key == 'sha256': continue # Exclure l'ancien hash
+                sha256_hash.update(str(key).encode('utf-8'))
+                sha256_hash.update(str(value).encode('utf-8'))
+
+        # Hasher les attributs du fichier racine
+        hash_attrs(h5_file.attrs)
+
+        # Hasher les datasets et leurs attributs
+        def hash_dataset(name):
+            dataset = h5_file[name]
+            dataset_array = dataset[:]
+            sha256_hash.update(name.encode('utf-8'))
+            sha256_hash.update(dataset_array.tobytes())
+            hash_attrs(dataset.attrs)
+
+        h5_file.visit(hash_dataset)
+
+        return sha256_hash.hexdigest()
         
     @staticmethod
     def read_acquisition_data(filepath: Path) -> Dict[str, Any]:
@@ -169,58 +161,26 @@ class HDF5Writer:
                     
         return result
         
+
+
     @staticmethod
     def verify_file_integrity(filepath: Path) -> bool:
-        """
-        Vérifie l'intégrité d'un fichier HDF5 via son hash SHA-256
+        """Vérifie l'intégrité d'un fichier HDF5 via son hash interne SHA256."""
+        if not filepath.exists():
+            return False
         
-        Args:
-            filepath: Chemin du fichier HDF5
-            
-        Returns:
-            True si l'intégrité est vérifiée
-        """
         try:
             with h5py.File(filepath, 'r') as f:
-                # Le hash est maintenant stocké dans les attributs du fichier principal
-                stored_hash = f.attrs.get('sha256')
-                if stored_hash is None:
+                if 'sha256' not in f.attrs:
                     return False
-                    
-                if isinstance(stored_hash, bytes):
-                    stored_hash = stored_hash.decode('utf-8')
-                    
-            # Calculer le hash actuel (sans l'attribut sha256)
-            temp_file = filepath.with_suffix('.tmp')
-            
-            # Copier sans l'attribut sha256 du fichier principal
-            with h5py.File(filepath, 'r') as src, h5py.File(temp_file, 'w') as dst:
-                raw_src = src['/raw']
-                raw_dst = dst.create_dataset('/raw', data=raw_src[:])
+                stored_hash = f.attrs['sha256']
                 
-                # Copier tous les attributs du dataset
-                for key, value in raw_src.attrs.items():
-                    raw_dst.attrs[key] = value
+                # Calculer le hash à partir du contenu actuel
+                calculated_hash = HDF5Writer._calculate_internal_hash(f)
                 
-                # Copier les attributs du fichier principal sauf sha256
-                for key, value in src.attrs.items():
-                    if key != 'sha256':
-                        dst.attrs[key] = value
-                        
-            # Calculer le hash du fichier temporaire
-            sha256_hash = hashlib.sha256()
-            with open(temp_file, 'rb') as f:
-                for chunk in iter(lambda: f.read(4096), b""):
-                    sha256_hash.update(chunk)
-                    
-            calculated_hash = sha256_hash.hexdigest()
-            
-            # Nettoyer
-            temp_file.unlink()
-            
             return stored_hash == calculated_hash
-            
-        except Exception:
+        except (IOError, KeyError, h5py.Error):
+            # h5py.Error pour les fichiers corrompus
             return False
 
 def export_to_hdf5(data: np.ndarray,
@@ -242,9 +202,30 @@ def export_to_hdf5(data: np.ndarray,
         Hash SHA-256 du fichier créé
     """
     with HDF5Writer(output_path) as writer:
-        return writer.write_acquisition_data(
+        hash_val = writer.write_acquisition_data(
             data=data,
             sampling_rate=sampling_rate,
             channel_names=channel_names,
             metadata=metadata
         )
+        writer.create_metadata_file(metadata)
+        return hash_val
+
+    def create_metadata_file(self, metadata: Dict[str, Any]):
+        """Crée un fichier de métadonnées JSON avec le checksum du fichier HDF5.
+
+        Args:
+            metadata (dict): Les métadonnées à inclure.
+        """
+        checksum = self.file_handle.attrs.get('sha256')
+        if not checksum:
+            return
+
+        metadata_with_checksum = {
+            'checksum_sha256': checksum,
+            'original_metadata': metadata
+        }
+        
+        metadata_file_path = self.filepath.with_suffix('.json')
+        with open(metadata_file_path, 'w') as f:
+            json.dump(metadata_with_checksum, f, indent=4)

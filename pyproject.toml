@@ -5,19 +5,41 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hrneowave"
-version = "0.3.0"
-description = "Logiciel d'acquisition et d'analyse de houle pour laboratoire maritime"
+version = "1.0.0"
+description = "Logiciel d'acquisition et d'analyse de houle pour laboratoire maritime - Version stable"
 authors = [{name = "Laboratoire d'Etude Maritime", email = "lem@maritime.fr"}]
+license = {text = "MIT"}
+readme = "README.md"
+keywords = ["maritime", "houle", "acquisition", "analyse", "laboratoire", "oceanographie"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Visualization"
+]
 requires-python = ">=3.8"
 dependencies = [
     "numpy>=1.20.0",
     "scipy>=1.7.0",
-    
+    "PySide6>=6.4.0",
+    "h5py>=3.6.0",
     "pyqtgraph>=0.12.0",
     "pyyaml>=5.4.0",
     "pytest>=6.0.0",
     "pytest-cov>=2.12.0"
 ]
+
+[project.urls]
+homepage = "https://github.com/lem-maritime/chneowave"
+repository = "https://github.com/lem-maritime/chneowave"
+documentation = "https://chneowave.readthedocs.io"
 
 [project.scripts]
 hr-lab-config = "hrneowave.tools.lab_config:main"

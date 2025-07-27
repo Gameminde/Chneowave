@@ -15,7 +15,7 @@ __all__ = [
     'BufferConfig',
     'BufferStats', 
     'CircularBufferBase',
-    'LockFreeCircularBuffer',
+    'ThreadSafeCircularBuffer',
     'MemoryMappedCircularBuffer',
     'CircularBuffer',
     'create_circular_buffer'
@@ -122,8 +122,8 @@ class CircularBufferBase(ABC):
         pass
 
 
-class LockFreeCircularBuffer(CircularBufferBase):
-    """Buffer circulaire lock-free optimisé pour les performances"""
+class ThreadSafeCircularBuffer(CircularBufferBase):
+    """Buffer circulaire thread-safe optimisé pour les performances"""
     
     def __init__(self, config: BufferConfig):
         self.config = config
@@ -425,13 +425,13 @@ class MemoryMappedCircularBuffer(CircularBufferBase):
             f.write(b'\0')
     
     def write(self, data: np.ndarray) -> bool:
-        """Implémentation similaire à LockFreeCircularBuffer"""
+        """Implémentation similaire à ThreadSafeCircularBuffer"""
         # Code similaire à LockFreeCircularBuffer.write()
         # (simplifié pour la longueur)
         return True  # Placeholder
     
     def read(self, n_samples: int, channel: Optional[int] = None) -> Optional[np.ndarray]:
-        """Implémentation similaire à LockFreeCircularBuffer"""
+        """Implémentation similaire à ThreadSafeCircularBuffer"""
         # Code similaire à LockFreeCircularBuffer.read()
         # (simplifié pour la longueur)
         return None  # Placeholder
@@ -465,11 +465,11 @@ def create_circular_buffer(config: BufferConfig,
     if use_mmap or config.total_bytes > 100 * 1024 * 1024:  # > 100MB
         return MemoryMappedCircularBuffer(config, mmap_file)
     else:
-        return LockFreeCircularBuffer(config)
+        return ThreadSafeCircularBuffer(config)
 
 
 # Alias pour compatibilité
-CircularBuffer = LockFreeCircularBuffer
+CircularBuffer = ThreadSafeCircularBuffer
 
 
 # Exemple d'utilisation

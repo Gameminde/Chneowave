@@ -5,29 +5,32 @@ Fenêtre principale pour CHNeoWave
 Gestion des signaux de projet et coordination des vues
 """
 
+import logging
 from PySide6.QtWidgets import QMainWindow, QMessageBox
-from PySide6.QtCore import Signal, Slot
+from PySide6.QtCore import Signal, Slot, QTimer
+
+logger = logging.getLogger(__name__)
 from hrneowave.core.signal_bus import get_error_bus, ErrorLevel
 from .view_manager import ViewManager
+from .widgets.main_sidebar import MainSidebar
+from .components.breadcrumbs import BreadcrumbsWidget, WorkflowStep
+from .preferences import PreferencesDialog, get_user_preferences
+from .components.help_system import HelpPanel, get_help_system, install_help_on_widget
+from .components.status_indicators import SystemStatusWidget, StatusLevel
+from .components.notification_system import get_notification_center, show_success, show_error, show_info
 
-# Import des vues
-from .views.welcome_view import WelcomeView
-from .views.acquisition_view import AcquisitionView
-from .views.analysis_view import AnalysisView
-from hrneowave.gui.controllers.acquisition_controller import AcquisitionController
-
-
-# Import des widgets
-try:
-    from .widgets.infos_essai_dock import InfosEssaiDock
-except ImportError:
-    InfosEssaiDock = None
-
-try:
-    from .widgets.etat_capteurs_dock import EtatCapteursDock
-except ImportError:
-    EtatCapteursDock = None
-
+# Import des vues v2 et configurations
+from .views import (
+    DashboardViewMaritime,
+    WelcomeView,
+    get_calibration_view,
+    get_acquisition_view,
+    get_analysis_view,
+    get_export_view,
+    get_settings_view,
+    VIEWS_CONFIG,
+    NAVIGATION_ORDER
+)
 
 class MainWindow(QMainWindow):
     """Fenêtre principale de l'application CHNeoWave"""
@@ -46,8 +49,11 @@ class MainWindow(QMainWindow):
         # Configuration
         self.config = config or {}
         
+        # Préférences utilisateur
+        self.user_preferences = get_user_preferences()
+        
         # Métadonnées du projet
-        self.project_meta = {}             # renseigné par WelcomeView
+        self.project_meta = {}
         
         # État de l'application
         self.is_acquiring = False
@@ -56,414 +62,171 @@ class MainWindow(QMainWindow):
         self.project_controller = None
         
         # Construction de l'interface
+        logger.info("Début de la construction de l'interface...")
         self._build_ui()
-        self._setup_docks()
-        self._setup_menu()
-        self._setup_status_bar()
+        logger.info("Interface construite avec succès")
+        
+        logger.info("Configuration des connexions...")
         self._setup_connections()
+        logger.info("Connexions configurées avec succès")
+        
+        # Configurer les nouveaux composants UX
+        logger.info("Configuration des indicateurs de statut...")
+        self._setup_status_indicators()
+        logger.info("Indicateurs de statut configurés avec succès")
+        
+        logger.info("Installation de l'aide contextuelle...")
+        self._install_contextual_help()
+        logger.info("Aide contextuelle installée avec succès")
+        
+        logger.info("Interface utilisateur v2 chargée avec succès")
+
+        # Connecter la barre de navigation
+        self.sidebar.navigation_requested.connect(self._on_navigation_requested)
+    
+    @Slot(str)
+    def _on_navigation_requested(self, view_name):
+        """Change la vue affichée en réponse à la barre de navigation latérale."""
+        if view_name in VIEWS_CONFIG:
+            self.view_manager.switch_to_view(view_name)
+            logger.info(f"Navigation vers la vue: '{view_name}'")
+            self._update_breadcrumbs_for_view(view_name)
+        else:
+            logger.warning(f"Tentative de naviguer vers une vue inconnue: '{view_name}'")
     
     def _build_ui(self):
-        """Construit l'interface utilisateur principale"""
-        from PySide6.QtWidgets import QStackedWidget, QVBoxLayout, QWidget
-        
+        """Construit l'interface utilisateur principale avec une barre latérale et breadcrumbs."""
+        from PySide6.QtWidgets import QStackedWidget, QHBoxLayout, QVBoxLayout, QWidget, QSplitter
+        from PySide6.QtCore import Qt
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
-        layout = QVBoxLayout(central_widget)
-        layout.setContentsMargins(0, 0, 0, 0)
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
 
+        # Zone principale avec splitter
+        main_splitter = QSplitter(Qt.Horizontal)
+        
+        # Barre latérale
+        self.sidebar = MainSidebar()
+        self.sidebar.setFixedWidth(280)
+        main_splitter.addWidget(self.sidebar)
+
+        # Zone de contenu principal avec breadcrumbs
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(0)
+        
+        # Breadcrumbs
+        self.breadcrumbs = BreadcrumbsWidget()
+        self.breadcrumbs.setFixedHeight(48)
+        self.breadcrumbs.step_selected.connect(self._on_breadcrumb_step_selected)
+        content_layout.addWidget(self.breadcrumbs)
+
+        # Contenu principal (Stack)
         self.stack_widget = QStackedWidget()
-        layout.addWidget(self.stack_widget)
+        self.stack_widget.setObjectName("mainContent")
+        content_layout.addWidget(self.stack_widget)
+        
+        main_splitter.addWidget(content_widget)
+        main_splitter.setSizes([280, 1200])
+        
+        main_layout.addWidget(main_splitter)
+
+        # Composants d'aide et de statut
+        self.help_panel = HelpPanel()
+        self.status_widget = SystemStatusWidget()
+        self.status_widget.status_updated.connect(self._on_system_status_updated)
 
         # Initialiser le gestionnaire de vues
-        from hrneowave.gui.view_manager import get_view_manager
-        self.view_manager = get_view_manager(self.stack_widget)
-
+        self.view_manager = ViewManager(self.stack_widget)
         self._create_and_register_views()
     
     def _create_and_register_views(self):
-        """Crée et enregistre les vues auprès du ViewManager"""
-        self.welcome_view = WelcomeView()
-        self.view_manager.register_view('welcome', self.welcome_view)
+        """Crée et enregistre les vues v2 auprès du ViewManager"""
+        logger.info("Création et enregistrement des vues v2")
 
-        self.acquisition_view = AcquisitionView()
-        self.view_manager.register_view('acquisition', self.acquisition_view)
+        # Vue d'accueil
+        welcome_view = WelcomeView(parent=None)
+        self.view_manager.register_view('welcome', welcome_view)
+        welcome_view.projectCreationRequested.connect(self._handle_project_creation)
 
-        self.analysis_view = AnalysisView()
-        self.view_manager.register_view('analysis', self.analysis_view)
+        # Dashboard maritime
+        dashboard_view = DashboardViewMaritime(parent=None)
+        self.view_manager.register_view('dashboard', dashboard_view)
 
-        # Initialiser les contrôleurs
-        self._create_project_controller()
-        self._create_analysis_controller()
-        self._create_acquisition_controller()
+        # Vues avec lazy loading
+        for view_name, config in VIEWS_CONFIG.items():
+            if 'loader' in config:
+                view_instance = config['loader'](parent=None)
+                self.view_manager.register_view(view_name, view_instance)
+                logger.info(f"[VIEW REGISTRATION] '{view_name}' view registered with object ID: {id(view_instance)}")
 
-        # Démarrer sur la vue d'accueil
+        # Navigation initiale
         self.view_manager.switch_to_view('welcome')
-    
-    def _setup_docks(self):
-        """Configure les docks widgets"""
-        from PySide6.QtCore import Qt
+        self._update_breadcrumbs_for_view('welcome')
+
+    def _update_breadcrumbs_for_view(self, view_name):
+        """Met à jour les breadcrumbs en fonction de la vue actuelle"""
+        # Mapping des noms de vues vers les WorkflowStep
+        view_to_step = {
+            'welcome': WorkflowStep.WELCOME,
+            'dashboard': WorkflowStep.PROJECT,
+            'calibration': WorkflowStep.CALIBRATION,
+            'acquisition': WorkflowStep.ACQUISITION,
+            'analysis': WorkflowStep.ANALYSIS,
+            'export': WorkflowStep.EXPORT
+        }
         
-        # Dock Infos Essai
-        if InfosEssaiDock:
-            self.infos_essai_dock = InfosEssaiDock(self)
-            self.addDockWidget(Qt.RightDockWidgetArea, self.infos_essai_dock)
-            
-            # Connecter les signaux du dock
-            self.infos_essai_dock.essai_updated.connect(self._on_essai_updated)
+        if view_name in view_to_step:
+            workflow_step = view_to_step[view_name]
+            self.breadcrumbs.set_current_step(workflow_step)
+
+    @Slot(object, str)
+    def _on_breadcrumb_step_selected(self, workflow_step, view_name):
+        """Gère la sélection d'une étape dans les breadcrumbs"""
+        # Mapping des WorkflowStep vers les noms de vues
+        step_to_view = {
+            WorkflowStep.WELCOME: 'welcome',
+            WorkflowStep.PROJECT: 'dashboard',
+            WorkflowStep.CALIBRATION: 'calibration',
+            WorkflowStep.ACQUISITION: 'acquisition',
+            WorkflowStep.ANALYSIS: 'analysis',
+            WorkflowStep.EXPORT: 'export'
+        }
+        
+        if workflow_step in step_to_view:
+            target_view = step_to_view[workflow_step]
+            self.view_manager.switch_to_view(target_view)
         else:
-            self.infos_essai_dock = None
-        
-        # Dock État Capteurs
-        if EtatCapteursDock:
-            self.etat_capteurs_dock = EtatCapteursDock(self)
-            self.addDockWidget(Qt.LeftDockWidgetArea, self.etat_capteurs_dock)
-            
-            # Connecter les signaux du dock
-            self.etat_capteurs_dock.capteur_selected.connect(self._on_capteur_selected)
-            self.etat_capteurs_dock.capteurs_updated.connect(self._on_capteurs_updated)
-        else:
-            self.etat_capteurs_dock = None
-    
-    def _setup_menu(self):
-        """Configure la barre de menu"""
-        from PySide6.QtGui import QAction
-        
-        menubar = self.menuBar()
-        
-        # Menu Fichier
-        file_menu = menubar.addMenu('Fichier')
-        
-        new_action = QAction('Nouveau projet', self)
-        new_action.setShortcut('Ctrl+N')
-        new_action.triggered.connect(self._new_project)
-        file_menu.addAction(new_action)
-        
-        file_menu.addSeparator()
-        
-        quit_action = QAction('Quitter', self)
-        quit_action.setShortcut('Ctrl+Q')
-        quit_action.triggered.connect(self.close)
-        file_menu.addAction(quit_action)
-        
-        # Menu Vues
-        view_menu = menubar.addMenu('Vues')
-
-        welcome_action = QAction('Accueil', self)
-        welcome_action.triggered.connect(lambda: self.view_manager.switch_to_view('welcome'))
-        view_menu.addAction(welcome_action)
-
-        acquisition_action = QAction('Acquisition', self)
-        acquisition_action.triggered.connect(lambda: self.view_manager.switch_to_view('acquisition'))
-        view_menu.addAction(acquisition_action)
-
-        analysis_action = QAction('Analyse', self)
-        analysis_action.triggered.connect(lambda: self.view_manager.switch_to_view('analysis'))
-        view_menu.addAction(analysis_action)
-    
-    def _create_project_controller(self):
-        """Crée et configure le gestionnaire de projet."""
-        from ..core.project_manager import ProjectManager
-        self.project_controller = ProjectManager()
-
-    def _setup_status_bar(self):
-        """Configure la barre de statut"""
-        from PySide6.QtWidgets import QStatusBar
-        
-        self.status_bar = QStatusBar()
-        self.setStatusBar(self.status_bar)
-        self.status_bar.showMessage("Prêt")
-    
-    def _create_acquisition_controller(self):
-        """Crée et configure le contrôleur d'acquisition."""
-        from hrneowave.gui.controllers.acquisition_controller import AcquisitionConfig, AcquisitionMode
-        
-        # Créer une configuration d'acquisition par défaut
-        acquisition_config = AcquisitionConfig(
-            mode=AcquisitionMode.SIMULATE,
-            sample_rate=1000,
-            n_channels=4,
-            buffer_size=10000
-        )
-        
-        # Créer le contrôleur d'acquisition
-        self.acquisition_controller = AcquisitionController(config=acquisition_config)
-        self.acquisition_view.set_controller(self.acquisition_controller)
-
-        # Connecter les signaux du contrôleur à l'interface
-        if hasattr(self.acquisition_controller, 'acquisition_started'):
-            self.acquisition_controller.acquisition_started.connect(self._on_acquisition_started)
-        if hasattr(self.acquisition_controller, 'acquisition_stopped'):
-            self.acquisition_controller.acquisition_stopped.connect(self._on_acquisition_stopped)
-        if hasattr(self.acquisition_controller, 'acquisition_progress'):
-            self.acquisition_controller.acquisition_progress.connect(self.update_acquisition_progress)
-
-    def _create_analysis_controller(self):
-        """Configure la vue d'analyse (pas de contrôleur séparé)."""
-        # AnalysisView fonctionne de manière autonome
-        # Connecter directement les signaux de la vue
-        if hasattr(self.analysis_view, 'analysisFinished'):
-            self.analysis_view.analysisFinished.connect(self._on_analysis_finished)
+            logger.warning(f"Étape de breadcrumb inconnue: {workflow_step}")
 
     def _setup_connections(self):
-        """Configure les connexions de signaux"""
-        # Connexions liées au projet
-        # Note: ProjectManager n'hérite pas de QObject, donc pas de signaux Qt
-        # La gestion des projets se fait via des appels directs
+        """Configure les connexions entre les composants"""
+        pass
 
-        if self.welcome_view:
-            self.welcome_view.projectCreated.connect(self._handle_project_creation)
+    def _setup_status_indicators(self):
+        """Configure les indicateurs de statut système"""
+        pass
 
-        # Connexions liées à l'état de l'application
-        self.projectCreated.connect(self._unlock_acquisition)
-        
-        # État initial des boutons
-        if self.acquisition_view:
-            if hasattr(self.acquisition_view, 'btn_start'):
-                self.acquisition_view.btn_start.setEnabled(False)
-            if hasattr(self.acquisition_view, 'btn_export'):
-                self.acquisition_view.btn_export.setEnabled(False)
-    
-    @Slot()
-    def _unlock_acquisition(self):
-        """Déverrouille les fonctionnalités d'acquisition après création du projet"""
-        if self.acquisition_view:
-            # Activer les boutons d'acquisition
-            if hasattr(self.acquisition_view, 'btn_start'):
-                self.acquisition_view.btn_start.setEnabled(True)
-            if hasattr(self.acquisition_view, 'btn_export'):
-                self.acquisition_view.btn_export.setEnabled(True)
-        
-        # Mettre à jour la barre de titre avec les métadonnées du projet
-        meta = self.project_meta
-        if meta:
-            title = f"CHNeoWave – {meta.get('name', 'Projet')} ({meta.get('owner', 'Inconnu')}, {meta.get('date', 'Date inconnue')})"
-            self.setWindowTitle(title)
-        
-        # Mettre à jour la barre de statut
-        self.status_bar.showMessage(f"Projet '{meta.get('name', 'Inconnu')}' créé - Acquisition disponible")
-    
-    @Slot(dict)
-    def _handle_project_creation(self, project_data):
-        """Gère la création d'un nouveau projet."""
-        try:
-            # Créer le projet via ProjectManager
-            project_id = self.project_controller.create_project(
-                name=project_data.get('name', 'Nouveau projet'),
-                description=project_data.get('description', ''),
-                author=project_data.get('owner', 'Utilisateur'),
-                location=project_data.get('location', ''),
-                basin_type=project_data.get('type', 'Standard')
-            )
-            
-            # Charger le projet créé
-            if self.project_controller.load_project(project_id):
-                self.project_meta = project_data
-                
-                # Mettre à jour le dock infos essai avec les données du projet
-                if self.infos_essai_dock:
-                    self.infos_essai_dock.set_essai_info(
-                        nom=project_data.get('name', 'Nouveau projet'),
-                        operateur=project_data.get('owner', 'Utilisateur'),
-                        configuration=project_data.get('type', 'Standard')
-                    )
-                
-                self.projectCreated.emit()
-                self.view_manager.switch_to_view('acquisition')
-                print(f"[DEBUG] Navigation vers vue 'acquisition' effectuée")
-            else:
-                self._on_project_creation_failed("Erreur", "Impossible de charger le projet créé")
-                
-        except Exception as e:
-            self._on_project_creation_failed("Erreur de création", str(e))
-    
-    @Slot(dict)
-    def _on_project_created(self, project_meta):
-        """Gère la création réussie d'un projet par le contrôleur."""
-        self.project_meta = project_meta
-        
-        # Mettre à jour le dock infos essai avec les données du projet
-        if self.infos_essai_dock:
-            self.infos_essai_dock.set_essai_info(
-                nom=project_meta.get('name', 'Nouveau projet'),
-                operateur=project_meta.get('owner', 'Utilisateur'),
-                configuration=project_meta.get('type', 'Standard')
-            )
-        
+    def _install_contextual_help(self):
+        """Installe le système d'aide contextuelle"""
+        pass
+
+    def _handle_project_creation(self):
+        """Gère la création d'un nouveau projet"""
         self.projectCreated.emit()
-        self.view_manager.switch_to_view('acquisition')
+        self.view_manager.switch_to_view('dashboard')
 
-    @Slot(str, str)
-    def _on_project_creation_failed(self, error_title, error_message):
-        """Affiche une erreur si la création du projet échoue."""
-        QMessageBox.critical(self, error_title, error_message)
-        self.status_bar.showMessage("Échec de la création du projet")
-    
-    @Slot(dict)
-    def _on_essai_updated(self, essai_data):
-        """Gère les mises à jour des informations d'essai"""
-        # Mettre à jour la barre de statut avec les infos essai
-        statut = essai_data.get('statut', 'Inconnu')
-        nom = essai_data.get('nom', 'Essai')
-        
-        if statut == 'En cours':
-            duree = essai_data.get('duree', '00:00:00')
-            nb_echantillons = essai_data.get('nb_echantillons', 0)
-            self.status_bar.showMessage(f"Acquisition en cours - {nom} - Durée: {duree} - Échantillons: {nb_echantillons:,}")
-        elif statut == 'Pause':
-            self.status_bar.showMessage(f"Acquisition en pause - {nom}")
-        elif statut == 'Arrêté':
-            self.status_bar.showMessage(f"Acquisition arrêtée - {nom}")
-        else:
-            self.status_bar.showMessage(f"Statut: {statut} - {nom}")
-    
-    def start_acquisition(self):
-        """Démarre une acquisition via le contrôleur."""
-        if self.acquisition_controller and self.project_meta:
-            self.acquisition_controller.start()
-
-    def _on_acquisition_started(self):
-        """Gère le démarrage effectif de l'acquisition."""
-        self.is_acquiring = True
-        if self.infos_essai_dock:
-            self.infos_essai_dock.start_essai(
-                nom=self.project_meta.get('name', 'Acquisition'),
-                operateur=self.project_meta.get('owner', 'Utilisateur'),
-                configuration=self.project_meta.get('type', 'Standard')
-            )
-    
-    def stop_acquisition(self):
-        """Arrête l'acquisition en cours via le contrôleur."""
-        if self.acquisition_controller:
-            self.acquisition_controller.stop()
-
-    def _on_acquisition_stopped(self):
-        """Gère l'arrêt effectif de l'acquisition."""
-        self.is_acquiring = False
-        if self.infos_essai_dock:
-            self.infos_essai_dock.stop_essai()
-
-    def _on_analysis_finished(self, results):
-        """Gère la fin de l'analyse."""
-        self.status_bar.showMessage("Analyse terminée.")
-        # AnalysisView gère ses propres résultats
-        self.is_acquiring = False
-        if self.infos_essai_dock:
-            self.infos_essai_dock.stop_essai()
-    
-    def pause_acquisition(self):
-        """Met en pause l'acquisition via le contrôleur."""
-        if self.acquisition_controller:
-            self.acquisition_controller.pause()
-        if self.infos_essai_dock:
-            self.infos_essai_dock.pause_essai()
-    
-    def resume_acquisition(self):
-        """Reprend l'acquisition via le contrôleur."""
-        if self.acquisition_controller:
-            self.acquisition_controller.resume()
-        if self.infos_essai_dock:
-            self.infos_essai_dock.resume_essai()
-    
-    def update_acquisition_progress(self, nb_echantillons):
-        """Met à jour le progrès de l'acquisition"""
-        if self.infos_essai_dock:
-            self.infos_essai_dock.update_echantillons(nb_echantillons)
-    
-    @Slot(int)
-    def _on_capteur_selected(self, capteur_id):
-        """Gère la sélection d'un capteur"""
-        # Mettre à jour la barre de statut
-        self.status_bar.showMessage(f"Capteur {capteur_id} sélectionné")
-        
-        # Émettre un signal pour les autres composants
-        # TODO: Connecter aux vues qui ont besoin de cette information
-        print(f"Capteur {capteur_id} sélectionné")
-    
-    @Slot(dict)
-    def _on_capteurs_updated(self, capteurs_data):
-        """Gère les mises à jour des capteurs"""
-        # Calculer des statistiques pour la barre de statut
-        capteurs = capteurs_data.get('capteurs', {})
-        nb_connectes = sum(1 for c in capteurs.values() if c['etat'] in ['Connecté', 'Acquisition'])
-        nb_acquisition = sum(1 for c in capteurs.values() if c['etat'] == 'Acquisition')
-        nb_erreurs = sum(1 for c in capteurs.values() if c['etat'] == 'Erreur')
-        
-        # Mettre à jour la barre de statut si pas d'acquisition en cours
-        if not self.is_acquiring:
-            status_msg = f"Capteurs: {nb_connectes}/{len(capteurs)} connectés"
-            if nb_acquisition > 0:
-                status_msg += f" | {nb_acquisition} en acquisition"
-            if nb_erreurs > 0:
-                status_msg += f" | {nb_erreurs} erreurs"
-            
-            self.status_bar.showMessage(status_msg)
-    
-    def set_capteurs_config(self, nb_capteurs: int):
-        """Configure le nombre de capteurs"""
-        if self.etat_capteurs_dock:
-            self.etat_capteurs_dock.spin_nb_capteurs.setValue(nb_capteurs)
-    
-    def start_capteurs_simulation(self):
-        """Démarre la simulation des capteurs"""
-        if self.etat_capteurs_dock:
-            self.etat_capteurs_dock.start_simulation()
-    
-    def stop_capteurs_simulation(self):
-        """Arrête la simulation des capteurs"""
-        if self.etat_capteurs_dock:
-            self.etat_capteurs_dock.stop_simulation()
-    
-    def update_capteur_data(self, capteur_id: int, **kwargs):
-        """Met à jour les données d'un capteur spécifique"""
-        if self.etat_capteurs_dock:
-            self.etat_capteurs_dock.set_capteur_data(capteur_id, **kwargs)
-    
-    def _new_project(self):
-        """Crée un nouveau projet via le contrôleur."""
-        if self.is_acquiring:
-            get_error_bus().emit_error(
-                ErrorLevel.WARNING,
-                "Impossible de créer un nouveau projet pendant l'acquisition.",
-                source='MainWindow'
-            )
-            return
-
-        # Réinitialisation via le contrôleur de projet si nécessaire
-        # Pour l'instant, on se contente de revenir à l'écran d'accueil
-
-        # Réinitialiser l'état de l'interface
-        self.project_meta = {}
-        if self.acquisition_view:
-            if hasattr(self.acquisition_view, 'btn_start'):
-                self.acquisition_view.btn_start.setEnabled(False)
-            if hasattr(self.acquisition_view, 'btn_export'):
-                self.acquisition_view.btn_export.setEnabled(False)
-
-        if self.welcome_view and hasattr(self.welcome_view, 'reset_form'):
-            self.welcome_view.reset_form()
-
-        self.view_manager.switch_to_view('welcome')
-        self.setWindowTitle("CHNeoWave")
-        self.status_bar.showMessage("Nouveau projet - Veuillez renseigner les informations")
-    
-    def get_current_view(self):
-        """Retourne la vue actuellement active"""
-        return self.view_manager.current_view
-    
-    def closeEvent(self, event):
-        """Gère la fermeture de l'application"""
-        if self.is_acquiring:
-            reply = QMessageBox.question(
-                self,
-                'Fermeture',
-                'Une acquisition est en cours. Voulez-vous vraiment quitter ?',
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.No
-            )
-
-            if reply == QMessageBox.Yes:
-                event.accept()
-            else:
-                event.ignore()
-        else:
-            event.accept()
+    @Slot(StatusLevel)
+    def _on_system_status_updated(self, status_level):
+        """Met à jour l'interface en fonction du statut système"""
+        logger.debug(f"Mise à jour du statut système: {status_level}")
+        if status_level == StatusLevel.ERROR:
+            show_error("Une erreur système est survenue")
+        elif status_level == StatusLevel.WARNING:
+            show_info("Attention: Le système nécessite votre attention")
+        elif status_level == StatusLevel.OK:
+            show_success("Le système fonctionne normalement")

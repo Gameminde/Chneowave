@@ -13,7 +13,17 @@ def _ensure_qt_imports():
     global QObject, Signal
     
     if QObject is None:
-        from PySide6.QtCore import QObject, Signal
+        try:
+            from PySide6.QtCore import QObject, Signal
+        except ImportError:
+            # Mode non-GUI, on utilise des mocks
+            QObject = object
+            class MockSignal:
+                def emit(self, *args, **kwargs):
+                    pass
+            Signal = MockSignal
+
+_ensure_qt_imports()
 
 class PostProcessor(QObject):
     """Contrôleur pour le post-traitement et l'analyse des données de houle

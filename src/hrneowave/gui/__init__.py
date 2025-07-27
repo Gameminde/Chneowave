@@ -5,7 +5,7 @@ Architecture MVC avec workflow guidé en 5 étapes
 """
 
 # Import du thème (sans dépendances)
-from .theme import CHNeoWaveTheme
+from .styles.theme_manager import ThemeManager as CHNeoWaveTheme
 
 # Les autres imports seront faits à la demande pour éviter les importations circulaires
 def get_main_controller():
@@ -24,12 +24,6 @@ def get_views():
     return WelcomeView, CalibrationView, AcquisitionView, AnalysisView, ExportView
 
 # Fonctions individuelles pour le ViewManager
-def get_welcome_view():
-    try:
-        from .views.welcome_view import WelcomeView
-        return WelcomeView
-    except ImportError:
-        return None
 
 def get_calibration_view():
     try:

@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-07-24T00:56:10.240243",
+  "system_info": {
+    "platform": "Windows-10-10.0.19045-SP0",
+    "python_version": "3.11.9",
+    "architecture": "64bit",
+    "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "cpu_count": 8,
+    "memory_total_gb": 7.76,
+    "disk_free_gb": 51.81
+  },
+  "environment_check": {
+    "python_path": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe",
+    "working_directory": "C:\\Users\\LEM\\Desktop\\chneowave",
+    "src_directory_exists": true,
+    "tests_directory_exists": true,
+    "required_packages": {
+      "pytest": "OK",
+      "pytest-cov": "OK",
+      "pytest-timeout": "OK",
+      "psutil": "OK",
+      "numpy": "OK",
+      "scipy": "OK",
+      "matplotlib": "OK",
+      "PyQt6": "OK"
+    },
+    "optional_packages": {
+      "black": "OK",
+      "flake8": "OK",
+      "mypy": "MISSING",
+      "sphinx": "OK"
+    }
+  },
+  "module_tests": {
+    "imports": {
+      "hrneowave.core.validators": "SUCCESS",
+      "hrneowave.core.error_handler": "SUCCESS",
+      "hrneowave.core.performance_monitor": "SUCCESS",
+      "hrneowave.gui.controllers.main_controller": "ERROR: handle_errors() missing 2 required positional arguments: 'operation' and 'component'",
+      "hrneowave.gui.views.welcome_view": "SUCCESS"
+    },
+    "unit_tests": {
+      "success": false,
+      "returncode": 2,
+      "stdout": "\n=================================== ERRORS ====================================\n_______________ ERROR collecting tests/gui/test_root_visible.py _______________\ntests\\gui\\test_root_visible.py:30: in <module>\n    from src.hrneowave.gui.controllers.main_controller import MainController\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:22: in <module>\n    class MainController(QObject):\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:88: in MainController\n    @handle_errors(category=ErrorCategory.SYSTEM)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: handle_errors() missing 2 required positional arguments: 'operation' and 'component'\n_______________ ERROR collecting tests/gui/test_workflow_ok.py ________________\ntests\\gui\\test_workflow_ok.py:29: in <module>\n    from hrneowave.gui.controllers.main_controller import MainController\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:22: in <module>\n    class MainController(QObject):\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:88: in MainController\n    @handle_errors(category=ErrorCategory.SYSTEM)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: handle_errors() missing 2 required positional arguments: 'operation' and 'component'\n__________________ ERROR collecting tests/test_interface.py ___________________\ntests\\test_interface.py:27: in <module>\n    from src.hrneowave.gui.controllers.main_controller import MainController\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:22: in <module>\n    class MainController(QObject):\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:88: in MainController\n    @handle_errors(category=ErrorCategory.SYSTEM)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: handle_errors() missing 2 required positional arguments: 'operation' and 'component'\n=========================== short test summary info ===========================\nERROR tests/gui/test_root_visible.py - TypeError: handle_errors() missing 2 r...\nERROR tests/gui/test_workflow_ok.py - TypeError: handle_errors() missing 2 re...\nERROR tests/test_interface.py - TypeError: handle_errors() missing 2 required...\n!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!\n1 deselected, 1 warning, 3 errors in 3.37s\n",
+      "stderr": "",
+      "command": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe -m pytest tests/ -m not slow and not integration and not performance --tb=short --disable-warnings -q"
+    }
+  },
+  "integration_tests": {
+    "success": false,
+    "returncode": 2,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-8.4.1, pluggy-1.6.0 -- C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe\ncachedir: .pytest_cache\nPySide6 6.9.1 -- Qt runtime 6.9.1 -- Qt compiled 6.9.1\nrootdir: C:\\Users\\LEM\\Desktop\\chneowave\nconfigfile: pytest.ini\nplugins: cov-6.2.1, qt-4.5.0\ncollecting ... collected 164 items / 3 errors / 164 deselected / 0 selected\n\n=================================== ERRORS ====================================\n_______________ ERROR collecting tests/gui/test_root_visible.py _______________\ntests\\gui\\test_root_visible.py:30: in <module>\n    from src.hrneowave.gui.controllers.main_controller import MainController\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:22: in <module>\n    class MainController(QObject):\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:88: in MainController\n    @handle_errors(category=ErrorCategory.SYSTEM)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: handle_errors() missing 2 required positional arguments: 'operation' and 'component'\n_______________ ERROR collecting tests/gui/test_workflow_ok.py ________________\ntests\\gui\\test_workflow_ok.py:29: in <module>\n    from hrneowave.gui.controllers.main_controller import MainController\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:22: in <module>\n    class MainController(QObject):\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:88: in MainController\n    @handle_errors(category=ErrorCategory.SYSTEM)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: handle_errors() missing 2 required positional arguments: 'operation' and 'component'\n__________________ ERROR collecting tests/test_interface.py ___________________\ntests\\test_interface.py:27: in <module>\n    from src.hrneowave.gui.controllers.main_controller import MainController\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:22: in <module>\n    class MainController(QObject):\nsrc\\hrneowave\\gui\\controllers\\main_controller.py:88: in MainController\n    @handle_errors(category=ErrorCategory.SYSTEM)\n     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nE   TypeError: handle_errors() missing 2 required positional arguments: 'operation' and 'component'\n============================== warnings summary ===============================\ntests\\test_interface_not_grey.py:12\n  C:\\Users\\LEM\\Desktop\\chneowave\\tests\\test_interface_not_grey.py:12: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html\n    @pytest.mark.slow\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n=========================== short test summary info ===========================\nERROR tests/gui/test_root_visible.py - TypeError: handle_errors() missing 2 r...\nERROR tests/gui/test_workflow_ok.py - TypeError: handle_errors() missing 2 re...\nERROR tests/test_interface.py - TypeError: handle_errors() missing 2 required...\n!!!!!!!!!!!!!!!!!!! Interrupted: 3 errors during collection !!!!!!!!!!!!!!!!!!!\n================ 164 deselected, 1 warning, 3 errors in 2.87s =================\n",
+    "stderr": "",
+    "command": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe -m pytest tests/ -m integration --tb=short -v"
+  },
+  "performance_tests": {
+    "success": false,
+    "returncode": 4,
+    "stdout": "",
+    "stderr": "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]\n__main__.py: error: unrecognized arguments: --timeout=120\n  inifile: C:\\Users\\LEM\\Desktop\\chneowave\\pytest.ini\n  rootdir: C:\\Users\\LEM\\Desktop\\chneowave\n\n",
+    "command": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe -m pytest tests/ -m performance --tb=short --timeout=120"
+  },
+  "overall_status": "WARNING",
+  "recommendations": [
+    {
+      "type": "SUGGESTION",
+      "message": "Installer les packages optionnels pour le développement: mypy",
+      "action": "pip install mypy"
+    },
+    {
+      "type": "CRITICAL",
+      "message": "Corriger les échecs de tests unitaires",
+      "action": "Examiner les logs de tests et corriger les erreurs"
+    },
+    {
+      "type": "WARNING",
+      "message": "Corriger les échecs de tests d'intégration",
+      "action": "Vérifier la compatibilité entre les modules"
+    }
+  ]
+}

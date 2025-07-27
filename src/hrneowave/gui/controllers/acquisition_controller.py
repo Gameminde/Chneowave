@@ -16,26 +16,9 @@ import json
 import os
 import logging
 
-# Import conditionnel des modules Qt
-def _ensure_qt_imports():
-    """Assure que les modules Qt sont importés correctement"""
-    global QObject, Signal, QTimer, QThread, QApplication
-    try:
-        from PySide6.QtCore import QObject, Signal, QTimer, QThread
-        from PySide6.QtWidgets import QApplication
-        return True
-    except ImportError:
-        try:
-            from PyQt6.QtCore import QObject, pyqtSignal as Signal, QTimer, QThread
-            from PyQt6.QtWidgets import QApplication
-            return True
-        except ImportError:
-            try:
-                from PyQt5.QtCore import QObject, pyqtSignal as Signal, QTimer, QThread
-                from PyQt5.QtWidgets import QApplication
-                return True
-            except ImportError:
-                return False
+# Import des modules Qt
+from PySide6.QtCore import QObject, Signal, Slot, QTimer, QThread
+from PySide6.QtWidgets import QApplication
 
 # Import du nouveau système de signaux unifié
 try:
@@ -180,16 +163,16 @@ class AcquisitionController(QObject):
     """
     
     # Signaux Qt unifiés (P0) - émis toutes les 0,5s
-    dataBlockReady = pyqtSignal(object)  # DataBlock (émis toutes 0,5s)
-    sessionFinished = pyqtSignal()       # émis après Stop
-    error = pyqtSignal(str)              # erreur simplifiée
+    dataBlockReady = Signal(object)  # DataBlock (émis toutes 0,5s)
+    sessionFinished = Signal()       # émis après Stop
+    error = Signal(str)              # erreur simplifiée
     
     # Signaux legacy (compatibilité)
-    data_ready = pyqtSignal(np.ndarray, float)  # données, timestamp
-    status_changed = pyqtSignal(str)  # nouveau statut
-    state_changed = pyqtSignal(object)  # nouvel état (AcquisitionState)
-    error_occurred = pyqtSignal(str)  # message d'erreur
-    samples_acquired = pyqtSignal(int)  # nombre d'échantillons acquis
+    data_ready = Signal(np.ndarray, float)  # données, timestamp
+    status_changed = Signal(str)  # nouveau statut
+    state_changed = Signal(object)  # nouvel état (AcquisitionState)
+    error_occurred = Signal(str)  # message d'erreur
+    samples_acquired = Signal(int)  # nombre d'échantillons acquis
     
     def __init__(self, config: AcquisitionConfig):
         super().__init__()

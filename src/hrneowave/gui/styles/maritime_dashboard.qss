@@ -1,0 +1,592 @@
+/*
+ * Feuille de Style Maritime Professionnelle CHNeoWave
+ * 
+ * Système de design cohérent basé sur le Golden Ratio et la palette maritime moderne.
+ * Compatible mode clair/sombre avec transitions fluides.
+ * 
+ * Auteur: Architecte Logiciel en Chef (ALC)
+ * Date: 2025-07-25
+ * Version: 2.0.0-pro
+ */
+
+/* ===== VARIABLES GLOBALES ===== */
+/* Palette Maritime Professionnelle */
+:root {
+    /* Couleurs primaires */
+    --mineral-blue: #055080;
+    --light-blue: #41B6E6;
+    --turquoise: #24CED5;
+    --snow-white: #F5FBFF;
+    --cyan-emerald: #50DAC7;
+    --steel-gray: #445868;
+    --coral-alert: #FF6B47;
+    
+    /* Mode clair */
+    --light-background: #F5FBFF;
+    --light-surface: #FFFFFF;
+    --light-text: #0A1929;
+    --light-secondary: #445868;
+    
+    /* Mode sombre */
+    --dark-background: #055080;
+    --dark-surface: #0A2040;
+    --dark-text: rgba(255,255,255,0.87);
+    --dark-secondary: rgba(255,255,255,0.60);
+    
+    /* États */
+    --success: #2E7D32;
+    --warning: #F57C00;
+    --error: #FF6B47;
+    --info: #41B6E6;
+    
+    /* Espacement Fibonacci */
+    --fib-xs: 8px;
+    --fib-sm: 13px;
+    --fib-md: 21px;
+    --fib-lg: 34px;
+    --fib-xl: 55px;
+    
+    /* Golden Ratio */
+    --phi: 1.618;
+    --phi-inverse: 0.618;
+    
+    /* Typographie */
+    --font-family: "Inter", "Roboto", "Segoe UI", sans-serif;
+    --font-h1: bold 35px var(--font-family);  /* 2.2rem */
+    --font-h2: bold 24px var(--font-family);  /* 1.5rem */
+    --font-body: normal 16px var(--font-family); /* 1rem */
+    --font-caption: normal 14px var(--font-family); /* 0.85rem */
+    
+    /* Ombres et effets */
+    --shadow-subtle: 0 2px 8px rgba(5, 80, 128, 0.1);
+    --shadow-elevated: 0 4px 16px rgba(5, 80, 128, 0.15);
+    --shadow-floating: 0 8px 32px rgba(5, 80, 128, 0.2);
+    
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ===== RESET ET BASE ===== */
+* {
+    box-sizing: border-box;
+}
+
+QWidget {
+    font-family: var(--font-family);
+    color: var(--light-text);
+}
+
+/* ===== DASHBOARD PRINCIPAL ===== */
+DashboardViewPro {
+    background-color: var(--light-background);
+    color: var(--light-text);
+}
+
+/* ===== SIDEBAR NAVIGATION ===== */
+ProSidebar {
+    background-color: var(--light-surface);
+    border-right: 2px solid var(--turquoise);
+    min-width: 185px; /* Golden Ratio: 300/1.618 */
+}
+
+QLabel#SidebarTitle {
+    color: var(--mineral-blue);
+    font: var(--font-h2);
+    font-weight: bold;
+    padding: var(--fib-sm) 0;
+    text-align: center;
+}
+
+QLabel#SidebarSectionTitle {
+    color: var(--steel-gray);
+    font: bold 14px var(--font-family);
+    margin-top: var(--fib-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+QFrame#SidebarSeparator {
+    background-color: var(--turquoise);
+    border: none;
+    height: 2px;
+    margin: var(--fib-sm) 0;
+}
+
+/* Boutons de navigation */
+QPushButton#NavButton {
+    background-color: transparent;
+    color: var(--steel-gray);
+    font: normal 14px var(--font-family);
+    text-align: left;
+    padding: var(--fib-sm) var(--fib-md);
+    border: none;
+    border-radius: 8px;
+    min-height: var(--fib-lg);
+    transition: all var(--transition-fast);
+}
+
+QPushButton#NavButton:hover {
+    background-color: var(--snow-white);
+    color: var(--mineral-blue);
+}
+
+QPushButton#NavButton:pressed {
+    background-color: var(--turquoise);
+    color: white;
+}
+
+QPushButton#NavButton:focus {
+    outline: 2px solid var(--light-blue);
+    outline-offset: 2px;
+}
+
+/* Toggle thème */
+QPushButton#ThemeToggle {
+    background-color: var(--mineral-blue);
+    color: white;
+    font: normal 12px var(--font-family);
+    padding: var(--fib-sm);
+    border: none;
+    border-radius: 8px;
+}
+
+QPushButton#ThemeToggle:hover {
+    background-color: var(--light-blue);
+}
+
+/* ===== ZONE PRINCIPALE ===== */
+QLabel#MainTitle {
+    color: var(--mineral-blue);
+    font: var(--font-h1);
+    margin-bottom: var(--fib-sm);
+    text-shadow: 0 1px 2px rgba(5, 80, 128, 0.1);
+}
+
+QLabel#SectionTitle {
+    color: var(--mineral-blue);
+    font: var(--font-h2);
+    margin-bottom: var(--fib-sm);
+    padding-bottom: var(--fib-xs);
+    border-bottom: 2px solid var(--turquoise);
+    position: relative;
+}
+
+QLabel#SectionTitle::after {
+    content: "";
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 30%;
+    height: 2px;
+    background-color: var(--cyan-emerald);
+}
+
+/* ===== BOUTONS PRINCIPAUX ===== */
+QPushButton#PrimaryButton {
+    background: linear-gradient(135deg, var(--mineral-blue) 0%, var(--light-blue) 100%);
+    color: white;
+    font: bold 16px var(--font-family);
+    padding: var(--fib-sm) var(--fib-lg);
+    border: none;
+    border-radius: 8px;
+    min-height: var(--fib-lg);
+}
+
+QPushButton#PrimaryButton:hover {
+    background: linear-gradient(135deg, var(--light-blue) 0%, var(--turquoise) 100%);
+}
+
+QPushButton#PrimaryButton:pressed {
+    background: linear-gradient(135deg, var(--mineral-blue) 0%, var(--light-blue) 100%);
+}
+
+QPushButton#PrimaryButton:focus {
+    outline: 3px solid rgba(65, 182, 230, 0.4);
+    outline-offset: 2px;
+}
+
+QPushButton#SecondaryButton {
+    background: linear-gradient(135deg, var(--cyan-emerald) 0%, var(--turquoise) 100%);
+    color: white;
+    font: 500 14px var(--font-family);
+    padding: var(--fib-sm) var(--fib-md);
+    border: none;
+    border-radius: 8px;
+    min-height: var(--fib-md);
+}
+
+QPushButton#SecondaryButton:hover {
+    background: linear-gradient(135deg, var(--turquoise) 0%, var(--light-blue) 100%);
+}
+
+/* ===== CARTES KPI ===== */
+ProKPICard {
+    background: linear-gradient(145deg, var(--light-surface) 0%, var(--snow-white) 100%);
+    border: 2px solid var(--turquoise);
+    border-radius: 12px;
+    margin: var(--fib-sm);
+}
+
+ProKPICard:hover {
+    background: linear-gradient(145deg, var(--snow-white) 0%, var(--light-surface) 100%);
+    border-color: var(--light-blue);
+}
+
+QLabel#KPIIcon {
+    font-size: 28px;
+    color: var(--turquoise);
+    text-shadow: 0 1px 2px rgba(36, 206, 213, 0.3);
+}
+
+QLabel#KPITitle {
+    color: var(--steel-gray);
+    font: 600 14px var(--font-family);
+    letter-spacing: 0.5px;
+}
+
+QLabel#KPIValue {
+    color: var(--mineral-blue);
+    font: 700 32px var(--font-family);
+    text-shadow: 0 1px 2px rgba(5, 80, 128, 0.2);
+}
+
+QLabel#KPIUnit {
+    color: var(--steel-gray);
+    font: 500 12px var(--font-family);
+    opacity: 0.8;
+}
+
+/* ===== SECTION SESSION ===== */
+QFrame#SessionSection {
+    background: linear-gradient(145deg, var(--light-surface) 0%, var(--snow-white) 100%);
+    border: 1px solid var(--turquoise);
+    border-radius: 12px;
+    margin-top: var(--fib-md);
+}
+
+QFrame#SessionSection:hover {
+    border-color: var(--light-blue);
+}
+
+QLabel#SessionTitle {
+    color: var(--mineral-blue);
+    font: 600 16px var(--font-family);
+    border-bottom: 1px solid var(--turquoise);
+    padding-bottom: var(--fib-xs);
+    margin-bottom: var(--fib-xs);
+}
+
+QLabel#SessionInfo {
+    color: var(--steel-gray);
+    font: 500 14px var(--font-family);
+    margin: var(--fib-xs) 0;
+}
+
+/* ===== WIDGETS FFT ET GRAPHIQUES ===== */
+ProFFTWidget {
+    background: linear-gradient(145deg, var(--light-surface) 0%, var(--snow-white) 100%);
+    border: 1px solid var(--turquoise);
+    border-radius: 12px;
+    margin: var(--fib-sm);
+    min-height: 400px;
+}
+
+/* ===== SPLITTERS ===== */
+QSplitter::handle {
+    background-color: var(--turquoise);
+    border-radius: 2px;
+}
+
+QSplitter::handle:horizontal {
+    width: 4px;
+    margin: 0 2px;
+}
+
+QSplitter::handle:vertical {
+    height: 4px;
+    margin: 2px 0;
+}
+
+QSplitter::handle:hover {
+    background-color: var(--light-blue);
+    transform: scale(1.2);
+}
+
+QSplitter::handle:pressed {
+    background-color: var(--cyan-emerald);
+}
+
+/* ===== BARRES DE DÉFILEMENT ===== */
+QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+
+QScrollBar:vertical {
+    background-color: var(--snow-white);
+    width: var(--fib-sm);
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:vertical {
+    background: linear-gradient(to right, var(--turquoise), var(--cyan-emerald));
+    border-radius: 6px;
+    min-height: var(--fib-md);
+    transition: all var(--transition-fast);
+}
+
+QScrollBar::handle:vertical:hover {
+    background: linear-gradient(to right, var(--light-blue), var(--turquoise));
+    transform: scaleX(1.2);
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    border: none;
+    background: none;
+    height: 0;
+}
+
+QScrollBar:horizontal {
+    background-color: var(--snow-white);
+    height: var(--fib-sm);
+    border-radius: 6px;
+    margin: 2px;
+}
+
+QScrollBar::handle:horizontal {
+    background: linear-gradient(to bottom, var(--turquoise), var(--cyan-emerald));
+    border-radius: 6px;
+    min-width: var(--fib-md);
+    transition: all var(--transition-fast);
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: linear-gradient(to bottom, var(--light-blue), var(--turquoise));
+    transform: scaleY(1.2);
+}
+
+/* ===== TOOLTIPS ===== */
+QToolTip {
+    background-color: var(--dark-surface);
+    color: var(--dark-text);
+    border: 1px solid var(--turquoise);
+    border-radius: 6px;
+    padding: var(--fib-xs) var(--fib-sm);
+    font: 500 12px var(--font-family);
+    /* box-shadow non supporté par Qt */
+}
+
+/* ===== FOCUS ET ACCESSIBILITÉ ===== */
+*:focus {
+    outline: 2px solid var(--light-blue);
+    outline-offset: 2px;
+    outline-style: solid;
+}
+
+/* ===== ANIMATIONS GLOBALES ===== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        /* box-shadow non supporté par Qt */
+    }
+    50% {
+        /* box-shadow non supporté par Qt */
+    }
+}
+
+/* Classes d'animation */
+.fade-in {
+    animation: fadeIn var(--transition-slow) ease-out;
+}
+
+.slide-in-left {
+    animation: slideInLeft var(--transition-normal) ease-out;
+}
+
+.pulse {
+    animation: pulse 2s infinite;
+}
+
+.glow {
+    animation: glow 3s infinite;
+}
+
+/* ===== MODE SOMBRE ===== */
+.dark-theme DashboardViewPro {
+    background-color: var(--dark-background);
+    color: var(--dark-text);
+}
+
+.dark-theme ProSidebar {
+    background-color: var(--dark-surface);
+    border-right-color: var(--cyan-emerald);
+}
+
+.dark-theme QLabel#SidebarTitle,
+.dark-theme QLabel#MainTitle,
+.dark-theme QLabel#SectionTitle {
+    color: var(--dark-text);
+}
+
+.dark-theme QLabel#SidebarSectionTitle,
+.dark-theme QLabel#KPITitle,
+.dark-theme QLabel#SessionInfo {
+    color: var(--dark-secondary);
+}
+
+.dark-theme ProKPICard {
+    background: linear-gradient(145deg, var(--dark-surface) 0%, var(--mineral-blue) 100%);
+    border-color: var(--cyan-emerald);
+}
+
+.dark-theme ProKPICard:hover {
+    background: linear-gradient(145deg, var(--mineral-blue) 0%, var(--dark-surface) 100%);
+    border-color: var(--turquoise);
+}
+
+.dark-theme QFrame#SessionSection {
+    background: linear-gradient(145deg, var(--dark-surface) 0%, var(--mineral-blue) 100%);
+    border-color: var(--cyan-emerald);
+}
+
+.dark-theme ProFFTWidget {
+    background: linear-gradient(145deg, var(--dark-surface) 0%, var(--mineral-blue) 100%);
+    border-color: var(--cyan-emerald);
+}
+
+.dark-theme QPushButton#NavButton:hover {
+    background-color: var(--mineral-blue);
+    color: var(--dark-text);
+}
+
+/* ===== RESPONSIVE DESIGN ===== */
+/* Écrans larges (> 1920px) */
+@media (min-width: 1920px) {
+    :root {
+        --fib-xs: 10px;
+        --fib-sm: 16px;
+        --fib-md: 26px;
+        --fib-lg: 42px;
+        --fib-xl: 68px;
+    }
+    
+    QLabel#MainTitle {
+        font-size: 42px;
+    }
+    
+    QLabel#SectionTitle {
+        font-size: 28px;
+    }
+}
+
+/* Écrans moyens (1440x900) */
+@media (max-width: 1440px) {
+    :root {
+        --fib-xs: 6px;
+        --fib-sm: 10px;
+        --fib-md: 16px;
+        --fib-lg: 26px;
+        --fib-xl: 42px;
+    }
+    
+    QLabel#MainTitle {
+        font-size: 28px;
+    }
+    
+    QLabel#SectionTitle {
+        font-size: 20px;
+    }
+    
+    ProKPICard {
+        min-width: 140px;
+    }
+}
+
+/* ===== ÉTATS D'ALERTE ===== */
+.status-success {
+    border-color: var(--success) !important;
+    background-color: rgba(46, 125, 50, 0.1) !important;
+}
+
+.status-warning {
+    border-color: var(--warning) !important;
+    background-color: rgba(245, 124, 0, 0.1) !important;
+}
+
+.status-error {
+    border-color: var(--error) !important;
+    background-color: rgba(255, 107, 71, 0.1) !important;
+    animation: pulse 1s infinite;
+}
+
+.status-info {
+    border-color: var(--info) !important;
+    background-color: rgba(65, 182, 230, 0.1) !important;
+}
+
+/* ===== PERFORMANCE ET OPTIMISATIONS ===== */
+/* Optimisation GPU pour les animations */
+* {
+    will-change: auto;
+}
+
+.animated {
+    will-change: transform, opacity;
+}
+
+/* Réduction des animations pour les préférences d'accessibilité */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* ===== PRINT STYLES ===== */
+@media print {
+    * {
+        background: white !important;
+        color: black !important;
+        /* box-shadow non supporté par Qt */
+        text-shadow: none !important;
+    }
+    
+    .no-print {
+        display: none !important;
+    }
+}

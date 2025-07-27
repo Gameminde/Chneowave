@@ -157,9 +157,13 @@ class PhiWidget(QWidget):
             # Calcule la hauteur φ
             phi_height = int(width / PhiConstants.PHI)
             
-            # Redimensionne si nécessaire
-            if abs(new_size.height() - phi_height) > 5:  # Tolérance de 5px
-                self.resize(width, phi_height)
+            # Évite la récursion infinie en vérifiant si on est déjà en train de redimensionner
+            if not hasattr(self, '_resizing') and abs(new_size.height() - phi_height) > 5:  # Tolérance de 5px
+                self._resizing = True
+                try:
+                    self.setFixedHeight(phi_height)
+                finally:
+                    delattr(self, '_resizing')
                 return
         
         super().resizeEvent(event)

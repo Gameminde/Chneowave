@@ -14,9 +14,12 @@ from PySide6.QtWidgets import (
     QStackedWidget, QGraphicsOpacityEffect
 )
 from PySide6.QtCore import (
-    QPropertyAnimation, QEasingCurve, QTimer, QObject, Signal, QRect, Qt
+    QPropertyAnimation, QEasingCurve, QTimer, QObject, Signal, QRect, Qt, Slot
 )
 from PySide6.QtGui import QScreen
+
+# Import du système de toast amélioré
+from .components.enhanced_toast import ToastManager, ToastLevel
 
 # Essayer d'importer les signaux unifiés
 try:
@@ -129,7 +132,10 @@ class ViewManager(QObject):
             self.views: Dict[str, QWidget] = {}
             self.current_view: Optional[str] = None
             
-            # Gestion des toasts
+            # Gestionnaire de toasts amélioré
+            self.toast_manager = ToastManager(max_toasts=3, parent=self)
+            
+            # Ancienne gestion des toasts (pour compatibilité)
             self.active_toasts: List = []
             self.max_toasts = 3
             
@@ -145,9 +151,22 @@ class ViewManager(QObject):
             """Enregistre une vue dans le gestionnaire"""
             if name in self.views:
                 self.logger.warning(f"Vue '{name}' déjà enregistrée, remplacement")
+                old_widget = self.views[name]
+                self.stacked_widget.removeWidget(old_widget)
             
+            # Détacher le widget de son parent actuel s'il en a un
+            if widget.parent() is not None:
+                widget.setParent(None)
+            
+            # Ajouter le widget au QStackedWidget
             self.views[name] = widget
-            self.stacked_widget.addWidget(widget)
+            index = self.stacked_widget.addWidget(widget)
+            self.logger.info(f"Vue '{name}' enregistrée avec succès dans le QStackedWidget à l'index {index}")
+
+        @Slot(str)
+        def change_view_by_name(self, name: str):
+            """Slot public pour changer de vue par son nom."""
+            self.change_view(name)
 
         def change_view(self, name: str) -> None:
             """Change la vue affichée dans le QStackedWidget"""
@@ -159,7 +178,7 @@ class ViewManager(QObject):
             self.stacked_widget.setCurrentWidget(widget_to_show)
             self.current_view = name
             self.view_changed.emit(name)
-            self.logger.info(f"Vue changée pour: {name}")
+            self.logger.info(f"[NAV SUCCESS] Navigation réussie: {self.current_view} → {name}")
             self.logger.info(f"Vue '{name}' enregistrée")
         
         def _connect_unified_signals(self):
@@ -235,9 +254,24 @@ class ViewManager(QObject):
                     )
                 return False
             
+            # Vérifications de sécurité pour éviter les violations d'accès
+            if not self.stacked_widget:
+                self.logger.error("StackedWidget non initialisé")
+                return False
+                
             try:
                 widget = self.views[view_name]
+                if not widget:
+                    self.logger.error(f"Widget pour la vue '{view_name}' est None")
+                    return False
+                    
                 previous_view = self.current_view
+                
+                # Vérifier que le widget est valide avant de l'utiliser
+                if hasattr(widget, 'isValid') and not widget.isValid():
+                    self.logger.error(f"Widget pour la vue '{view_name}' n'est pas valide")
+                    return False
+                    
                 self.stacked_widget.setCurrentWidget(widget)
                 self.current_view = view_name
                 
@@ -280,74 +314,79 @@ class ViewManager(QObject):
             return view_name in self.views
         
         def show_error_toast(self, error_msg) -> None:
-            """Affiche un toast d'erreur"""
-            # Vérifier que QApplication existe avant de créer des widgets
+            """Affiche un toast d'erreur avec le système amélioré"""
+            # Vérifier que QApplication existe
             if not QApplication.instance():
                 self.logger.warning("QApplication non disponible, impossible d'afficher le toast")
                 return
             
-            # Vérifier que le stacked_widget existe et a un parent
-            if not self.stacked_widget or not self.stacked_widget.parent():
-                self.logger.warning("Stacked widget non disponible, impossible d'afficher le toast")
-                return
-            
-            # Limiter le nombre de toasts actifs
-            if len(self.active_toasts) >= self.max_toasts:
-                # Fermer le plus ancien
-                oldest_toast = self.active_toasts.pop(0)
-                oldest_toast.hide_toast()
-            
-            # Créer la classe ToastNotification si nécessaire
-            global ToastNotification
-            if ToastNotification is None:
-                ToastNotification = _create_toast_notification_class()
-            
-            # Créer et afficher le nouveau toast
             try:
-                toast = ToastNotification(
-                    message=error_msg.message if hasattr(error_msg, 'message') else str(error_msg),
-                    level=error_msg.level if hasattr(error_msg, 'level') else 'INFO',
-                    parent=self.stacked_widget.parent()
-                )
-            except Exception as e:
-                self.logger.error(f"Erreur lors de la création du toast: {e}")
-                return
-            
-            # Positionner les toasts en cascade
-            toast_index = len(self.active_toasts)
-            screen = QApplication.primaryScreen()
-            screen_rect = screen.availableGeometry()
-            
-            x = screen_rect.width() - toast.width() - 20
-            y = 20 + (toast_index * (toast.height() + 10))
-            toast.move(x, y)
-            
-            # Durée selon le niveau d'erreur
-            if UNIFIED_SIGNALS_AVAILABLE and hasattr(error_msg, 'level'):
-                durations = {
-                    ErrorLevel.INFO: 3000,
-                    ErrorLevel.WARNING: 5000,
-                    ErrorLevel.ERROR: 7000,
-                    ErrorLevel.CRITICAL: 10000
+                # Extraire les informations du message d'erreur
+                message = error_msg.message if hasattr(error_msg, 'message') else str(error_msg)
+                
+                # Mapper les niveaux d'erreur vers les niveaux de toast
+                if hasattr(error_msg, 'level'):
+                    if UNIFIED_SIGNALS_AVAILABLE:
+                        level_mapping = {
+                            ErrorLevel.INFO: ToastLevel.INFO,
+                            ErrorLevel.WARNING: ToastLevel.WARNING,
+                            ErrorLevel.ERROR: ToastLevel.ERROR,
+                            ErrorLevel.CRITICAL: ToastLevel.CRITICAL
+                        }
+                        toast_level = level_mapping.get(error_msg.level, ToastLevel.INFO)
+                    else:
+                        # Mapping pour les niveaux string
+                        level_str = str(error_msg.level).upper()
+                        if level_str in ['SUCCESS', 'OK']:
+                            toast_level = ToastLevel.SUCCESS
+                        elif level_str in ['WARNING', 'WARN']:
+                            toast_level = ToastLevel.WARNING
+                        elif level_str in ['ERROR', 'ERR']:
+                            toast_level = ToastLevel.ERROR
+                        elif level_str in ['CRITICAL', 'CRIT', 'FATAL']:
+                            toast_level = ToastLevel.CRITICAL
+                        else:
+                            toast_level = ToastLevel.INFO
+                else:
+                    toast_level = ToastLevel.INFO
+                
+                # Titre selon le niveau
+                titles = {
+                    ToastLevel.SUCCESS: "Succès",
+                    ToastLevel.INFO: "Information",
+                    ToastLevel.WARNING: "Attention",
+                    ToastLevel.ERROR: "Erreur",
+                    ToastLevel.CRITICAL: "Critique"
                 }
-                duration = durations.get(error_msg.level, 5000)
-            else:
-                duration = 5000
-            
-            self.active_toasts.append(toast)
-            toast.show_toast(duration)
-            
-            # Nettoyer la liste quand le toast se ferme
-            def cleanup_toast():
-                if toast in self.active_toasts:
-                    self.active_toasts.remove(toast)
-            
-            toast.fade_out_animation.finished.connect(cleanup_toast)
-            
-            self.error_displayed.emit(error_msg)
-            level_str = error_msg.level.value if hasattr(error_msg, 'level') and hasattr(error_msg.level, 'value') else str(error_msg.level if hasattr(error_msg, 'level') else 'INFO')
-            message_str = error_msg.message if hasattr(error_msg, 'message') else str(error_msg)
-            self.logger.info(f"Toast affiché: {level_str} - {message_str}")
+                title = titles.get(toast_level, "Notification")
+                
+                # Durée selon le niveau
+                durations = {
+                    ToastLevel.SUCCESS: 3000,
+                    ToastLevel.INFO: 4000,
+                    ToastLevel.WARNING: 6000,
+                    ToastLevel.ERROR: 8000,
+                    ToastLevel.CRITICAL: 10000
+                }
+                duration = durations.get(toast_level, 5000)
+                
+                # Afficher le toast avec le gestionnaire amélioré
+                toast = self.toast_manager.show_toast(
+                    message=message,
+                    level=toast_level,
+                    title=title,
+                    duration=duration
+                )
+                
+                # Émettre le signal pour compatibilité
+                self.error_displayed.emit(error_msg)
+                
+                self.logger.info(f"Toast amélioré affiché: {toast_level.value} - {message}")
+                
+            except Exception as e:
+                self.logger.error(f"Erreur lors de l'affichage du toast amélioré: {e}")
+                # Fallback vers l'ancien système si nécessaire
+                self._show_fallback_toast(error_msg)
         
         def _on_session_finished(self) -> None:
             """P0: Gestionnaire pour sessionFinished() - change automatiquement vers AnalysisView"""
@@ -365,7 +404,42 @@ class ViewManager(QObject):
         
         def cleanup_toasts(self) -> None:
             """Nettoie tous les toasts actifs"""
+            # Nettoyer les nouveaux toasts
+            self.toast_manager.clear_all_toasts()
+            
+            # Nettoyer les anciens toasts (compatibilité)
             for toast in self.active_toasts:
-                toast.hide_toast()
+                if hasattr(toast, 'hide_toast'):
+                    toast.hide_toast()
             self.active_toasts.clear()
+            
             self.logger.info("Tous les toasts ont été nettoyés")
+        
+        def _show_fallback_toast(self, error_msg):
+            """Système de toast de secours en cas d'erreur"""
+            try:
+                message = error_msg.message if hasattr(error_msg, 'message') else str(error_msg)
+                level = error_msg.level if hasattr(error_msg, 'level') else 'INFO'
+                
+                # Toast simple de secours
+                self.toast_manager.info(f"[Fallback] {message}", "Notification")
+                
+            except Exception as e:
+                self.logger.error(f"Erreur dans le système de toast de secours: {e}")
+        
+        # Méthodes de convenance pour les toasts
+        def show_success_toast(self, message: str, title: str = "Succès"):
+            """Affiche un toast de succès"""
+            return self.toast_manager.success(message, title)
+        
+        def show_info_toast(self, message: str, title: str = "Information"):
+            """Affiche un toast d'information"""
+            return self.toast_manager.info(message, title)
+        
+        def show_warning_toast(self, message: str, title: str = "Attention"):
+            """Affiche un toast d'avertissement"""
+            return self.toast_manager.warning(message, title)
+        
+        def show_critical_toast(self, message: str, title: str = "Critique"):
+            """Affiche un toast critique"""
+            return self.toast_manager.critical(message, title)

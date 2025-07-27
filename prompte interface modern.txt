@@ -1,0 +1,281 @@
+Mission Critique : Modernisation Design Interface CHNeoWave
+Contexte et Objectifs
+Projet : CHNeoWave - Système d'acquisition maritime
+Problèmes identifiés : Interface surchargée, couleurs incohérentes, manque de fluidité, textes invisibles, workflow de calibration fragmenté, graphiques obsolètes
+Objectif : Transformer l'interface en design moderne, fluide et cohérent selon les standards UI/UX 2025
+
+CONTRAINTES ABSOLUES - NON NÉGOCIABLES
+🚫 Interdictions Strictes
+AUCUNE modification de la logique métier dans core/, hardware/, utils/
+
+AUCUN changement des signatures de méthodes existantes
+
+AUCUNE suppression de fonctionnalités actuelles
+
+AUCUNE modification des workflows de données scientifiques
+
+✅ Zone d'Intervention Autorisée
+Fichiers QSS uniquement : gui/styles/
+
+Layouts et widgets : gui/views/, gui/widgets/
+
+Composants visuels : modifications esthétiques uniquement
+
+Structure d'affichage : réorganisation visuelle sans impact fonctionnel
+
+PROBLÈMES À RÉSOUDRE PRIORITAIREMENT
+1. Système de Couleurs Moderne et Cohérent
+Problème : Couleurs cassées, texte noir invisible, manque de cohérence
+
+Solution requise :
+
+css
+/* Palette professionnelle maritime */
+--primary-blue: #1e40af;      /* Bleu océan principal */
+--secondary-blue: #3b82f6;     /* Bleu ciel secondaire */
+--accent-cyan: #06b6d4;        /* Cyan accent pour données */
+--success-green: #10b981;      /* Vert validation */
+--warning-amber: #f59e0b;      /* Amber avertissements */
+--error-red: #ef4444;          /* Rouge erreurs */
+--neutral-50: #f8fafc;         /* Fond très clair */
+--neutral-800: #1e293b;        /* Texte principal */
+--neutral-600: #475569;        /* Texte secondaire */
+Actions spécifiques :
+
+Créer maritime_modern_palette.qss avec variables CSS cohérentes
+
+Appliquer contraste minimum 4.5:1 pour accessibilité
+
+Utiliser couleurs sémantiques pour statuts (succès, erreur, avertissement)
+
+Remplacer TOUS les textes noirs par --neutral-800 pour visibilité garantie
+
+2. Refonte Interface Calibration : Une Seule Fenêtre Unifiée
+Problème : 3 fenêtres séparées fragmentent l'expérience utilisateur
+
+Solution requise :
+
+python
+# Dans calibration_view.py - Structure unifiée
+class UnifiedCalibrationView(QWidget):
+    def __init__(self):
+        # Sidebar navigation : Étapes 1-2-3
+        # Zone principale : Contenu dynamique selon étape
+        # Footer : Boutons navigation + progression
+Actions spécifiques :
+
+Créer layout horizontal : Sidebar étapes (20%) + Zone principale (80%)
+
+Sidebar avec indicateurs de progression visuels
+
+Transition fluide entre étapes sans nouvelles fenêtres
+
+Barre de progression en haut avec pourcentage completion
+
+3. Modernisation des Graphiques Scientifiques
+Problème : Graphiques obsolètes, peu lisibles
+
+Solution requise :
+
+python
+# Style moderne pour pyqtgraph
+pg.setConfigOptions(
+    antialias=True,
+    useOpenGL=True,
+    background='#f8fafc',  # Fond moderne
+    foreground='#1e293b'   # Texte lisible
+)
+Actions spécifiques :
+
+Appliquer palette moderne à tous les graphiques
+
+Ajouter grilles subtiles et axes clairement étiquetés
+
+Utiliser courbes antialiasées pour qualité professionnelle
+
+Légendes repositionnées avec typographie moderne
+
+4. Fluidité et Animations Professionnelles
+Problème : Interface statique, transitions brutales
+
+Solution requise :
+
+css
+/* Transitions fluides globales */
+* {
+    transition: all 0.2s ease-in-out;
+}
+
+.button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15);
+}
+
+.panel-transition {
+    animation: slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+Actions spécifiques :
+
+Ajouter micro-animations sur boutons et interactions
+
+Transitions de 200ms pour changements d'états
+
+Animations d'entrée pour nouveaux panels (300ms)
+
+Loading spinners modernes pendant traitements
+
+5. Hiérarchie Visuelle et Espacement
+Problème : Interface surchargée, pas de respiration
+
+Solution requise :
+
+Espacement Golden Ratio : 8px, 13px, 21px, 34px, 55px
+
+Typographie hiérarchisée : H1(24px), H2(20px), H3(16px), Body(14px)
+
+Ombres portées subtiles : box-shadow: 0 2px 8px rgba(0,0,0,0.08)
+
+Bordures arrondies : border-radius: 8px pour modernité
+
+SPÉCIFICATIONS TECHNIQUES DÉTAILLÉES
+Refonte Complète des QSS
+css
+/* maritime_modern.qss - Fichier principal */
+@import "maritime_palette.qss";
+@import "components.qss";
+@import "animations.qss";
+
+/* Styles globaux */
+QMainWindow {
+    background-color: var(--neutral-50);
+    color: var(--neutral-800);
+    font-family: "Inter", "Segoe UI", sans-serif;
+}
+
+QPushButton {
+    background: linear-gradient(135deg, var(--primary-blue), var(--secondary-blue));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 600;
+    transition: all 0.2s ease;
+}
+
+QPushButton:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.2);
+}
+Composants Spécialisés
+CarteKPI moderne : Fond blanc, ombre subtile, icônes colorées
+
+Graphiques intégrés : Palette cohérente, axes stylés, légendes claires
+
+Navigation tabs : Style moderne avec indicateurs actifs
+
+Formulaires : Champs avec focus states et validation visuelle
+
+Structure Unifiée Calibration
+text
+┌─────────────────────────────────────────────────────────┐
+│  CHNeoWave - Calibration Unifiée            [─][□][×]  │
+├─────────────────────────────────────────────────────────┤
+│ ●●●○○ Progression: Étape 3/5                     80%   │
+├──────────┬──────────────────────────────────────────────┤
+│ ÉTAPES   │  CONTENU PRINCIPAL                         │
+│          │                                            │
+│ ● Capteur│  ┌─ Sélection Capteur ─────────────────┐  │
+│ ○ Points │  │                                     │  │
+│ ○ Mesure │  │  [Dropdown] Sonde 1 ▼              │  │
+│ ○ Analyse│  │  [Slider] Points: 5 ●────●         │  │
+│ ○ Rapport│  │                                     │  │
+│          │  └─────────────────────────────────────┘  │
+│          │                                            │
+│          │  [Graphique temps réel]                    │
+├──────────┴──────────────────────────────────────────────┤
+│  [Précédent]                    [Continuer] [Terminer] │
+└─────────────────────────────────────────────────────────┘
+PLAN D'EXÉCUTION SÉQUENTIEL
+Phase 1 : Système de Couleurs (1 jour)
+Créer maritime_palette.qss avec variables modernes
+
+Remplacer TOUS les color: black par variables appropriées
+
+Tester contraste sur tous les éléments textuels
+
+Valider lisibilité dans les deux thèmes (clair/sombre)
+
+Phase 2 : Unification Calibration (2 jours)
+Refactoriser calibration_view.py en vue unique
+
+Implémenter navigation par étapes dans sidebar
+
+Ajouter barre de progression animée
+
+Tester workflow complet sans régression fonctionnelle
+
+Phase 3 : Modernisation Graphiques (1 jour)
+Appliquer nouvelle palette à pyqtgraph
+
+Améliorer lisibilité axes et légendes
+
+Ajouter grilles et annotations modernes
+
+Tester rendu sur différentes résolutions
+
+Phase 4 : Fluidité et Animations (1 jour)
+Ajouter transitions CSS globales
+
+Implémenter micro-animations boutons
+
+Créer loading states modernes
+
+Optimiser performances animations
+
+Phase 5 : Finitions et Cohérence (1 jour)
+Harmoniser espacements selon Golden Ratio
+
+Unifier typographie sur toute l'application
+
+Peaufiner ombres et effets visuels
+
+Tests finaux sur tous les écrans
+
+CRITÈRES DE VALIDATION
+Tests Visuels Obligatoires
+ Aucun texte invisible (contraste ≥ 4.5:1)
+
+ Cohérence couleurs sur toutes les vues
+
+ Calibration en une seule fenêtre unifiée
+
+ Graphiques modernes et lisibles
+
+ Transitions fluides (<300ms)
+
+ Responsive sur résolutions 1920x1080 minimum
+
+Tests Fonctionnels
+ Workflow calibration identique au niveau fonctionnel
+
+ Aucune régression dans l'acquisition de données
+
+ Sauvegarde/chargement projets inchangés
+
+ Signaux Qt préservés intégralement
+
+LIVRABLES ATTENDUS
+gui/styles/maritime_modern/ : Nouveau système de thèmes
+
+Vue calibration unifiée : Remplace les 3 fenêtres actuelles
+
+Graphiques modernisés : Nouvelle apparence professionnelle
+
+Animations fluides : Micro-interactions polies
+
+Documentation : DESIGN_MODERNIZATION.md expliquant les changements
+
+COMMANDE D'EXÉCUTION
+Exécuter immédiatement : Commencer par Phase 1 (système couleurs) puis progresser séquentiellement. Valider chaque phase avant passage à la suivante. Aucune improvisation autorisée - suivre strictement le plan défini.
+
+Objectif final : Interface CHNeoWave moderne, fluide, cohérente et professionnelle, digne des standards maritimes 2025, sans compromettre une seule fonctionnalité scientifique existante.

@@ -17,20 +17,27 @@ from dataclasses import dataclass
 from enum import Enum
 import time
 import threading
+import logging
 
-# Variables globales pour les imports Qt conditionnels
-QObject = None
-Signal = None
-QTimer = None
-QApplication = None
+logger = logging.getLogger(__name__)
 
-def _ensure_qt_imports():
-    """Importe les modules Qt de manière conditionnelle"""
-    global QObject, Signal, QTimer, QApplication
-    
-    if QObject is None:
-        from PySide6.QtCore import QObject, Signal, QTimer
-        from PySide6.QtWidgets import QApplication
+# Importations Qt avec fallback
+try:
+    from PySide6.QtCore import QObject, Signal, QTimer
+    from PySide6.QtWidgets import QApplication
+    logger.info("PySide6 imported")
+except ImportError:
+    try:
+        from PyQt6.QtCore import QObject, Signal, QTimer
+        from PyQt6.QtWidgets import QApplication
+        logger.info("PyQt6 imported")
+    except ImportError:
+        # Permet au module de s'importer sans GUI (tests, etc.)
+        QObject = object
+        Signal = object
+        QTimer = object
+        QApplication = object
+        logger.info("Qt fallback to object")
 
 
 class ErrorLevel(Enum):
@@ -116,7 +123,7 @@ class ErrorBus(QObject):
     """Bus d'erreurs global pour diffuser les erreurs vers l'interface"""
     
     # Signal pour les erreurs
-    error_occurred = pyqtSignal(object)  # ErrorMessage
+    error_occurred = Signal(object)  # ErrorMessage
     
     def __init__(self):
         super().__init__()
@@ -177,26 +184,26 @@ class SignalBus(QObject):
     """Bus de signaux principal pour CHNeoWave"""
     
     # Signaux d'acquisition
-    dataBlockReady = pyqtSignal(object)  # DataBlock
-    sessionStarted = pyqtSignal(dict)  # config de session
-    sessionFinished = pyqtSignal()  # P0: signal sans paramètres
-    sessionStateChanged = pyqtSignal(object)  # SessionState
+    dataBlockReady = Signal(object)  # DataBlock
+    sessionStarted = Signal(dict)  # config de session
+    sessionFinished = Signal()  # P0: signal sans paramètres
+    sessionStateChanged = Signal(object)  # SessionState
     
     # Signaux de buffer
-    bufferOverflowWarning = pyqtSignal(float)  # pourcentage d'utilisation
-    bufferOverflow = pyqtSignal(str)  # mode d'overflow
-    bufferReset = pyqtSignal()
-    bufferStatsUpdated = pyqtSignal(dict)  # statistiques buffer
+    bufferOverflowWarning = Signal(float)  # pourcentage d'utilisation
+    bufferOverflow = Signal(str)  # mode d'overflow
+    bufferReset = Signal()
+    bufferStatsUpdated = Signal(dict)  # statistiques buffer
     
     # Signaux de traitement
-    processingStarted = pyqtSignal()
-    processingFinished = pyqtSignal(dict)  # résultats
-    processingProgress = pyqtSignal(float)  # pourcentage 0-100
+    processingStarted = Signal()
+    processingFinished = Signal(dict)  # résultats
+    processingProgress = Signal(float)  # pourcentage 0-100
     
     # Signaux d'interface
-    viewChangeRequested = pyqtSignal(str)  # nom de la vue
-    configurationChanged = pyqtSignal(dict)  # nouvelle configuration
-    analysisRequested = pyqtSignal(dict)  # Demande d'analyse avec les données
+    viewChangeRequested = Signal(str)  # nom de la vue
+    configurationChanged = Signal(dict)  # nouvelle configuration
+    analysisRequested = Signal(dict)  # Demande d'analyse avec les données
     
     def __init__(self):
         super().__init__()

@@ -13,9 +13,11 @@ from pathlib import Path
 from PySide6.QtCore import QObject, Signal, QTimer
 from ..view_manager import ViewManager
 from hrneowave.core.signal_bus import get_signal_bus
-from hrneowave.hw.hardware_adapter import HardwareAcquisitionAdapter
+from hrneowave.hardware.manager import HardwareManager
 from hrneowave.core.post_processor import PostProcessor
 from .optimized_processing_worker import OptimizedProcessingWorker
+from hrneowave.core.error_handler import get_error_handler, ErrorCategory, ErrorContext, handle_errors
+from hrneowave.core.performance_monitor import get_performance_monitor, Alert, AlertLevel
 
 class MainController(QObject):
     """
@@ -43,12 +45,19 @@ class MainController(QObject):
         self.config = config
         self.logger = logging.getLogger(__name__)
         
+        # Gestionnaire d'erreurs centralisé
+        self.error_handler = get_error_handler()
+        
+        # Moniteur de performance
+        self.performance_monitor = get_performance_monitor()
+        self._setup_performance_monitoring()
+        
         # État du workflow
         self.current_project_path: Optional[str] = None
         self.workflow_data: Dict[str, Any] = {}
         
         # Modules backend
-        self.hardware_adapter: Optional[HardwareAcquisitionAdapter] = None
+        self.hardware_adapter: Optional[HardwareManager] = None
         self.post_processor: Optional[PostProcessor] = None
         self.processing_worker: Optional[OptimizedProcessingWorker] = None
         
@@ -60,6 +69,9 @@ class MainController(QObject):
         # Démarrage
         # QTimer.singleShot(100, self._finalize_initialization)
         self._finalize_initialization()
+        
+        # Démarrer le monitoring de performance
+        self.performance_monitor.start_monitoring()
         
         self.logger.info("MainController initialisé")
         
@@ -73,6 +85,7 @@ class MainController(QObject):
             format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         
+    @handle_errors(operation="initialize_backend", component="MainController", category=ErrorCategory.SYSTEM)
     def _initialize_backend_modules(self):
         """
         Initialise les modules backend
@@ -84,12 +97,13 @@ class MainController(QObject):
                 self.logger.info("PostProcessor initialisé")
                 
             # Initialiser l'adaptateur matériel
-            if HardwareAcquisitionAdapter:
-                self.hardware_adapter = HardwareAcquisitionAdapter()
+            if HardwareManager:
+                self.hardware_adapter = HardwareManager(self.config)
                 self.logger.info("Hardware adapter initialisé")
                 
         except Exception as e:
             self.logger.error(f"Erreur initialisation backend: {e}")
+            raise
             
 
         try:
@@ -128,6 +142,52 @@ class MainController(QObject):
                 
         self.logger.info("Signaux connectés")
         
+    def _setup_performance_monitoring(self):
+        """
+        Configure le monitoring de performance
+        """
+        # Ajouter un callback pour les alertes de performance
+        self.performance_monitor.add_alert_callback(self._on_performance_alert)
+        
+        self.logger.info("Monitoring de performance configuré")
+        
+    def _on_performance_alert(self, alert: Alert):
+        """
+        Gestionnaire pour les alertes de performance
+        """
+        # Créer le contexte d'erreur
+        context = ErrorContext(
+            component="PerformanceMonitor",
+            operation="monitoring",
+            user_data={
+                "metric": alert.metric,
+                "value": alert.value,
+                "threshold": alert.threshold,
+                "current_step": self.get_current_step()
+            }
+        )
+        
+        # Traiter selon le niveau d'alerte
+        if alert.level == AlertLevel.CRITICAL:
+            self.error_handler.handle_error(
+                Exception(alert.message),
+                category=ErrorCategory.SYSTEM,
+                context=context
+            )
+            # Afficher une alerte critique à l'utilisateur
+            self._show_error("Alerte Performance Critique", alert.message, ErrorCategory.SYSTEM)
+            
+        elif alert.level == AlertLevel.WARNING:
+            self.error_handler.log_warning(alert.message, context)
+            # Pour les avertissements, on log seulement sans déranger l'utilisateur
+            
+        self.logger.info(f"Alerte performance traitée: {alert.level.value} - {alert.message}")
+
+    def navigate_to_acquisition(self):
+        """Navigue vers la vue d'acquisition."""
+        self.logger.info("Navigation vers la vue d'acquisition demandée.")
+        self.view_manager.change_view('acquisition')
+
     def _finalize_initialization(self):
         """
         Finalise l'initialisation et émet le signal de prêt
@@ -237,6 +297,7 @@ class MainController(QObject):
         # Navigation stricte: dashboard → calibration
         self._navigate_to_view("calibration", "Valider projet")
             
+    @handle_errors(operation="load_project_data", component="MainController")
     def _load_project_data(self, project_path: str):
         """
         Charge les données d'un projet existant
@@ -254,7 +315,8 @@ class MainController(QObject):
             
         except Exception as e:
             self.logger.error(f"Erreur chargement projet: {e}")
-            self._show_error("Erreur de chargement", f"Impossible de charger le projet: {e}")
+            self._show_error("Erreur de chargement", f"Impossible de charger le projet: {e}", ErrorCategory.DATA)
+            raise
             
     def _initialize_new_project(self):
         """
@@ -311,6 +373,7 @@ class MainController(QObject):
         # Navigation stricte: calibration → acquisition
         self._navigate_to_view("acquisition", "Continuer calibration")
         
+    @handle_errors(operation="initialize_hardware", component="MainController")
     def _initialize_hardware(self, calibration_config: Dict[str, Any]):
         """
         Initialise le matériel avec la configuration de calibration
@@ -324,7 +387,8 @@ class MainController(QObject):
                 
         except Exception as e:
             self.logger.error(f"Erreur initialisation matériel: {e}")
-            self._show_error("Erreur matériel", f"Impossible d'initialiser le matériel: {e}")
+            self._show_error("Erreur matériel", f"Impossible d'initialiser le matériel: {e}", ErrorCategory.HARDWARE)
+            raise
             
     def _on_acquisition_finished(self, acquisition_data: Dict[str, Any]):
         from PySide6.QtCore import Slot
@@ -434,11 +498,27 @@ class MainController(QObject):
         
     # Méthodes utilitaires
     
-    def _show_error(self, title: str, message: str):
+    def _show_error(self, title: str, message: str, category: ErrorCategory = ErrorCategory.GUI):
         """
-        Affiche une boîte de dialogue d'erreur
+        Affiche une boîte de dialogue d'erreur avec gestion centralisée
         """
         from PySide6.QtWidgets import QMessageBox
+        
+        # Créer le contexte d'erreur
+        context = ErrorContext(
+            component="MainController",
+            operation=title,
+            user_data={"current_step": self.get_current_step()}
+        )
+        
+        # Enregistrer l'erreur
+        self.error_handler.handle_error(
+            Exception(message),
+            category=category,
+            context=context
+        )
+        
+        # Afficher la boîte de dialogue
         QMessageBox.critical(self.main_window, title, message)
         self.errorOccurred.emit(title, message)
         
@@ -447,6 +527,15 @@ class MainController(QObject):
         Affiche une boîte de dialogue d'avertissement
         """
         from PySide6.QtWidgets import QMessageBox
+        
+        # Enregistrer l'avertissement
+        context = ErrorContext(
+            component="MainController",
+            operation=title,
+            user_data={"current_step": self.get_current_step()}
+        )
+        
+        self.error_handler.log_warning(message, context)
         QMessageBox.warning(self.main_window, title, message)
         
     def _show_info(self, title: str, message: str):
@@ -524,6 +613,14 @@ class MainController(QObject):
         Arrêt propre du contrôleur
         """
         self.logger.info("Arrêt du MainController")
+        
+        # Arrêter le monitoring de performance
+        if self.performance_monitor:
+            try:
+                self.performance_monitor.stop_monitoring()
+                self.logger.info("Monitoring de performance arrêté")
+            except Exception as e:
+                self.logger.error(f"Erreur arrêt monitoring: {e}")
         
         # Arrêter le worker de traitement
         if self.processing_worker and self.processing_worker.isRunning():

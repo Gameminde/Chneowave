@@ -1,0 +1,16 @@
+# Dépendances de développement pour CHNeoWave
+
+# Tests et développement
+pytest>=7.0.0
+pytest-qt>=4.0.0
+pytest-cov>=4.0.0
+coverage>=6.0.0
+
+# Documentation
+sphinx>=4.0.0
+sphinx-rtd-theme>=1.0.0
+
+# Qualité de code
+flake8>=4.0.0
+black>=22.0.0
+isort>=5.10.0

@@ -36,15 +36,22 @@ def test_root_view_visible(qtbot):
     
     try:
         # Import des modules nécessaires
-        from hrneowave.gui.main_window import CHNeoWaveMainWindow
+        from hrneowave.gui.main_window import MainWindow as CHNeoWaveMainWindow
         from hrneowave.gui.controllers.main_controller import MainController
         
         # Créer la fenêtre principale
         win = CHNeoWaveMainWindow()
         qtbot.addWidget(win)
         
+        # Obtenir le ViewManager
+        from hrneowave.gui.view_manager import get_view_manager
+        view_manager = get_view_manager()
+
+        # Créer une configuration factice pour le test
+        config = {'simulation': {'enabled': False}}
+
         # Initialiser le contrôleur principal
-        controller = MainController(win)
+        controller = MainController(win, view_manager, config)
         controller.initialize()
         
         # Vérifier que la fenêtre existe
@@ -109,8 +116,15 @@ def test_stacked_widget_autofill_background(qtbot):
         win = CHNeoWaveMainWindow()
         qtbot.addWidget(win)
         
+        # Obtenir le ViewManager
+        from hrneowave.gui.view_manager import get_view_manager
+        view_manager = get_view_manager()
+
+        # Créer une configuration factice pour le test
+        config = {'simulation': {'enabled': False}}
+
         # Initialiser le contrôleur principal
-        controller = MainController(win)
+        controller = MainController(win, view_manager, config)
         controller.initialize()
         
         # Obtenir le ViewManager et son QStackedWidget

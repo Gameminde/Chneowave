@@ -108,18 +108,15 @@ class TestCalibPDF:
             generator = CalibrationPDFGenerator()
             generator.generate_certificate(sample_calibration_data, str(output_file))
             
-            # Extraction du texte PDF avec PyPDF2
+            # Extraction du texte PDF avec pdfplumber
             try:
-                import PyPDF2
-                with open(output_file, 'rb') as f:
-                    pdf_reader = PyPDF2.PdfReader(f)
+                import pdfplumber
+                with pdfplumber.open(output_file) as pdf:
                     pdf_content = ""
-                    for page in pdf_reader.pages:
-                        pdf_content += page.extract_text()
+                    for page in pdf.pages:
+                        pdf_content += page.extract_text() or ""
             except ImportError:
-                # Fallback vers lecture brute si PyPDF2 n'est pas disponible
-                with open(output_file, 'rb') as f:
-                    pdf_content = f.read().decode('latin-1', errors='ignore')
+                pytest.fail("pdfplumber n'est pas installé. Veuillez l'installer avec : pip install pdfplumber")
             
             # Vérifications de contenu
             assert 'CHNeoWave' in pdf_content, "Titre CHNeoWave manquant"
@@ -256,18 +253,15 @@ class TestCalibPDF:
             calib_json = json.dumps(sample_calibration_data, sort_keys=True)
             expected_hash = hash_string(calib_json)
             
-            # Extraction du texte PDF avec PyPDF2
+            # Extraction du texte PDF avec pdfplumber
             try:
-                import PyPDF2
-                with open(output_file, 'rb') as f:
-                    pdf_reader = PyPDF2.PdfReader(f)
+                import pdfplumber
+                with pdfplumber.open(output_file) as pdf:
                     pdf_content = ""
-                    for page in pdf_reader.pages:
-                        pdf_content += page.extract_text()
+                    for page in pdf.pages:
+                        pdf_content += page.extract_text() or ""
             except ImportError:
-                # Fallback vers lecture brute si PyPDF2 n'est pas disponible
-                with open(output_file, 'rb') as f:
-                    pdf_content = f.read().decode('latin-1', errors='ignore')
+                pytest.fail("pdfplumber n'est pas installé. Veuillez l'installer avec : pip install pdfplumber")
             
             # Le hash devrait être présent dans le PDF
             hash_short = expected_hash[:16]  # Premiers 16 caractères

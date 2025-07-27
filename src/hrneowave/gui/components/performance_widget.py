@@ -527,22 +527,39 @@ class PerformanceWidget(QWidget):
         max_cols = 3
         
         for name, metric in metrics.items():
+            # Vérifier que metric est bien un objet PerformanceMetric
+            if not isinstance(metric, PerformanceMetric):
+                logger.warning(f"Métrique invalide pour {name}: {type(metric)} - attendu PerformanceMetric")
+                continue
+            
+            # Vérifier que la métrique a les attributs requis
+            if not hasattr(metric, 'name') or not hasattr(metric, 'value'):
+                logger.warning(f"Métrique incomplète pour {name}: attributs manquants")
+                continue
+                
             if name not in self.metric_widgets:
                 # Créer un nouveau widget de métrique
-                metric_widget = MetricWidget(metric, show_history=True)
-                self.metric_widgets[name] = metric_widget
-                
-                # Ajouter au layout
-                self.metrics_layout.addWidget(metric_widget, row, col)
-                
-                col += 1
-                if col >= max_cols:
-                    col = 0
-                    row += 1
+                try:
+                    metric_widget = MetricWidget(metric, show_history=True)
+                    self.metric_widgets[name] = metric_widget
+                    
+                    # Ajouter au layout
+                    self.metrics_layout.addWidget(metric_widget, row, col)
+                    
+                    col += 1
+                    if col >= max_cols:
+                        col = 0
+                        row += 1
+                except Exception as e:
+                    logger.error(f"Erreur lors de la création du widget pour {name}: {e}")
+                    continue
             else:
                 # Mettre à jour le widget existant
-                self.metric_widgets[name].update_metric(metric)
-                self.metric_widgets[name].add_history_point(metric)
+                try:
+                    self.metric_widgets[name].update_metric(metric)
+                    self.metric_widgets[name].add_history_point(metric)
+                except Exception as e:
+                    logger.error(f"Erreur lors de la mise à jour du widget {name}: {e}")
     
     def add_custom_metric(self, name: str, collector_func):
         """Ajoute une métrique personnalisée"""
@@ -671,9 +688,9 @@ if __name__ == "__main__":
     performance_widget = PerformanceWidget()
     
     # Ajout de collecteurs personnalisés
-    performance_widget.add_custom_metric("python_memory", create_memory_collector)
-    performance_widget.add_custom_metric("gc_collections", create_gc_collector)
-    performance_widget.add_custom_metric("active_threads", create_thread_collector)
+    performance_widget.add_custom_metric("python_memory", lambda: create_memory_collector())
+    performance_widget.add_custom_metric("gc_collections", lambda: create_gc_collector())
+    performance_widget.add_custom_metric("active_threads", lambda: create_thread_collector())
     
     window.setCentralWidget(performance_widget)
     window.setWindowTitle("CHNeoWave - Performance Monitor")

@@ -1,0 +1,18 @@
+/* Light Theme */
+
+QWidget {
+    background-color: var(--light-bg);
+    color: var(--light-text-primary);
+}
+
+QPushButton {
+    background-color: var(--light-accent);
+    color: var(--on-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+QPushButton:hover {
+    background-color: var(--light-accent-hover);
+}

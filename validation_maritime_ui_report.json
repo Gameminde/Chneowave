@@ -1,0 +1,208 @@
+{
+  "timestamp": "2025-07-26T13:41:45.301198",
+  "version": "1.0.0",
+  "theme": "Maritime PRO 2025",
+  "tests": {
+    "file_exists_styles_maritime_theme.qss": {
+      "status": "PASS",
+      "message": "Thème maritime principal existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\styles\\maritime_theme.qss",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_views_dashboard_view.py": {
+      "status": "PASS",
+      "message": "Vue tableau de bord existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\views\\dashboard_view.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_views_calibration_view.py": {
+      "status": "PASS",
+      "message": "Vue calibration existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\views\\calibration_view.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_views_acquisition_view.py": {
+      "status": "PASS",
+      "message": "Vue acquisition existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\views\\acquisition_view.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_views_analysis_view.py": {
+      "status": "PASS",
+      "message": "Vue analyse existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\views\\analysis_view.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_views_report_view.py": {
+      "status": "PASS",
+      "message": "Vue rapport existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\views\\report_view.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_widgets_kpi_card.py": {
+      "status": "PASS",
+      "message": "Widget carte KPI existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\widgets\\kpi_card.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_widgets_main_sidebar.py": {
+      "status": "PASS",
+      "message": "Sidebar principale existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\widgets\\main_sidebar.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_widgets_theme_toggle.py": {
+      "status": "PASS",
+      "message": "Basculeur de thème existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\widgets\\theme_toggle.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_views___init__.py": {
+      "status": "PASS",
+      "message": "Module views existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\views\\__init__.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_exists_widgets___init__.py": {
+      "status": "PASS",
+      "message": "Module widgets existe",
+      "details": "C:\\Users\\LEM\\Desktop\\chneowave\\src\\hrneowave\\gui\\widgets\\__init__.py",
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "file_structure": {
+      "status": "PASS",
+      "message": "Tous les fichiers requis sont présents",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "qss_size": {
+      "status": "PASS",
+      "message": "Taille QSS appropriée (8699 caractères)",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "qss_theme": {
+      "status": "WARN",
+      "message": "Thème maritime partiellement valide",
+      "details": {
+        "palette_colors": {
+          "found": [
+            "#0A1929",
+            "#055080",
+            "#2B79B6",
+            "#00ACC1",
+            "#F5FBFF"
+          ],
+          "missing": []
+        },
+        "golden_ratio_spacing": {
+          "found": [
+            "8px",
+            "13px",
+            "21px",
+            "34px",
+            "55px"
+          ],
+          "missing": []
+        },
+        "typography": {
+          "found": [
+            "Inter",
+            "font-family"
+          ],
+          "missing": []
+        },
+        "components": {
+          "found": [
+            "QMainWindow",
+            "QPushButton",
+            "QScrollBar",
+            "QTabWidget"
+          ],
+          "missing": []
+        },
+        "animations": {
+          "found": [
+            "transition",
+            "ease-in-out"
+          ],
+          "missing": []
+        },
+        "themes": {
+          "found": [],
+          "missing": [
+            "[data-theme=\"light\"]",
+            "[data-theme=\"dark\"]"
+          ]
+        }
+      },
+      "timestamp": "2025-07-26T13:41:45.301198"
+    },
+    "import_views_DashboardView": {
+      "status": "PASS",
+      "message": "Import DashboardView réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_views_CalibrationView": {
+      "status": "PASS",
+      "message": "Import CalibrationView réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_views_AcquisitionView": {
+      "status": "PASS",
+      "message": "Import AcquisitionView réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_views_AnalysisView": {
+      "status": "PASS",
+      "message": "Import AnalysisView réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_views_ReportView": {
+      "status": "PASS",
+      "message": "Import ReportView réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_widgets_KPICard": {
+      "status": "PASS",
+      "message": "Import KPICard réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_widgets_MainSidebar": {
+      "status": "PASS",
+      "message": "Import MainSidebar réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "import_widgets_ThemeToggle": {
+      "status": "PASS",
+      "message": "Import ThemeToggle réussi",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "design_guide": {
+      "status": "WARN",
+      "message": "Sections manquantes: # CHNeoWave Design Guide 2025, ## Palette de Couleurs Maritime PRO, ## Typographie Inter, ## Golden Ratio, ## Composants UI, ## Animations et Transitions, ## Accessibilité WCAG 2.1 AA",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.920491"
+    },
+    "legacy_backup": {
+      "status": "PASS",
+      "message": "41 fichiers sauvegardés",
+      "details": null,
+      "timestamp": "2025-07-26T13:41:45.935602"
+    }
+  },
+  "summary": {
+    "total_tests": 24,
+    "passed": 22,
+    "failed": 0,
+    "warnings": 2
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "timestamp": "2025-07-24T01:21:42.625203",
+  "system_info": {
+    "platform": "Windows-10-10.0.19045-SP0",
+    "python_version": "3.11.9",
+    "architecture": "64bit",
+    "processor": "Intel64 Family 6 Model 140 Stepping 1, GenuineIntel",
+    "cpu_count": 8,
+    "memory_total_gb": 7.76,
+    "disk_free_gb": 51.71
+  },
+  "environment_check": {
+    "python_path": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe",
+    "working_directory": "C:\\Users\\LEM\\Desktop\\chneowave",
+    "src_directory_exists": true,
+    "tests_directory_exists": true,
+    "required_packages": {
+      "pytest": "OK",
+      "pytest-cov": "OK",
+      "pytest-timeout": "OK",
+      "psutil": "OK",
+      "numpy": "OK",
+      "scipy": "OK",
+      "matplotlib": "OK",
+      "PyQt6": "OK"
+    },
+    "optional_packages": {
+      "black": "OK",
+      "flake8": "OK",
+      "mypy": "MISSING",
+      "sphinx": "OK"
+    }
+  },
+  "module_tests": {
+    "imports": {
+      "hrneowave.core.validators": "SUCCESS",
+      "hrneowave.core.error_handler": "SUCCESS",
+      "hrneowave.core.performance_monitor": "SUCCESS",
+      "hrneowave.gui.controllers.main_controller": "SUCCESS",
+      "hrneowave.gui.views.welcome_view": "SUCCESS"
+    },
+    "unit_tests": {
+      "success": false,
+      "returncode": 3221225477,
+      "stdout": "...........s...........F........",
+      "stderr": "Windows fatal exception: access violation\n\nCurrent thread 0x000002d4 (most recent call first):\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\tests\\gui\\test_live_acquisition_view_v2.py\", line 24 in test_live_acquisition_v2_initialization\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\python.py\", line 157 in pytest_pyfunc_call\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_callers.py\", line 121 in _multicall\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_manager.py\", line 120 in _hookexec\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_hooks.py\", line 512 in __call__\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\python.py\", line 1671 in runtest\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\runner.py\", line 178 in pytest_runtest_call\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_callers.py\", line 121 in _multicall\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_manager.py\", line 120 in _hookexec\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_hooks.py\", line 512 in __call__\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\runner.py\", line 246 in <lambda>\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\runner.py\", line 344 in from_call\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\runner.py\", line 245 in call_and_report\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\runner.py\", line 136 in runtestprotocol\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\runner.py\", line 117 in pytest_runtest_protocol\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_callers.py\", line 121 in _multicall\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_manager.py\", line 120 in _hookexec\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_hooks.py\", line 512 in __call__\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\main.py\", line 367 in pytest_runtestloop\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_callers.py\", line 121 in _multicall\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_manager.py\", line 120 in _hookexec\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_hooks.py\", line 512 in __call__\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\main.py\", line 343 in _main\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\main.py\", line 289 in wrap_session\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\main.py\", line 336 in pytest_cmdline_main\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_callers.py\", line 121 in _multicall\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_manager.py\", line 120 in _hookexec\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pluggy\\_hooks.py\", line 512 in __call__\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\config\\__init__.py\", line 175 in main\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\_pytest\\config\\__init__.py\", line 201 in console_main\n  File \"C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Lib\\site-packages\\pytest\\__main__.py\", line 9 in <module>\n  File \"<frozen runpy>\", line 88 in _run_code\n  File \"<frozen runpy>\", line 198 in _run_module_as_main\n",
+      "command": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe -m pytest tests/ -m not slow and not integration and not performance --tb=short --disable-warnings -q"
+    }
+  },
+  "integration_tests": {
+    "success": false,
+    "returncode": 5,
+    "stdout": "============================= test session starts =============================\nplatform win32 -- Python 3.11.9, pytest-8.4.1, pluggy-1.6.0 -- C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe\ncachedir: .pytest_cache\nPySide6 6.9.1 -- Qt runtime 6.9.1 -- Qt compiled 6.9.1\nrootdir: C:\\Users\\LEM\\Desktop\\chneowave\nconfigfile: pytest.ini\nplugins: cov-6.2.1, qt-4.5.0\ncollecting ... collected 172 items / 172 deselected / 0 selected\n\n============================== warnings summary ===============================\ntests\\gui\\test_root_visible.py:53\n  C:\\Users\\LEM\\Desktop\\chneowave\\tests\\gui\\test_root_visible.py:53: PytestCollectionWarning: cannot collect test class 'TestMainWindow' because it has a __init__ constructor (from: tests/gui/test_root_visible.py)\n    class TestMainWindow(CHNeoWaveMainWindow):\n\ntests\\test_interface_not_grey.py:12\n  C:\\Users\\LEM\\Desktop\\chneowave\\tests\\test_interface_not_grey.py:12: PytestUnknownMarkWarning: Unknown pytest.mark.slow - is this a typo?  You can register custom marks to avoid this warning - for details, see https://docs.pytest.org/en/stable/how-to/mark.html\n    @pytest.mark.slow\n\n-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html\n===================== 172 deselected, 2 warnings in 2.35s =====================\n",
+    "stderr": "",
+    "command": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe -m pytest tests/ -m integration --tb=short -v"
+  },
+  "performance_tests": {
+    "success": false,
+    "returncode": 4,
+    "stdout": "",
+    "stderr": "ERROR: usage: __main__.py [options] [file_or_dir] [file_or_dir] [...]\n__main__.py: error: unrecognized arguments: --timeout=120\n  inifile: C:\\Users\\LEM\\Desktop\\chneowave\\pytest.ini\n  rootdir: C:\\Users\\LEM\\Desktop\\chneowave\n\n",
+    "command": "C:\\Users\\LEM\\Desktop\\chneowave\\venv\\Scripts\\python.exe -m pytest tests/ -m performance --tb=short --timeout=120"
+  },
+  "overall_status": "WARNING",
+  "recommendations": [
+    {
+      "type": "SUGGESTION",
+      "message": "Installer les packages optionnels pour le développement: mypy",
+      "action": "pip install mypy"
+    },
+    {
+      "type": "CRITICAL",
+      "message": "Corriger les échecs de tests unitaires",
+      "action": "Examiner les logs de tests et corriger les erreurs"
+    },
+    {
+      "type": "WARNING",
+      "message": "Corriger les échecs de tests d'intégration",
+      "action": "Vérifier la compatibilité entre les modules"
+    }
+  ]
+}

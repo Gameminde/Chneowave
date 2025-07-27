@@ -1,0 +1,18 @@
+/* Dark Theme */
+
+QWidget {
+    background-color: var(--dark-bg);
+    color: var(--dark-text-primary);
+}
+
+QPushButton {
+    background-color: var(--dark-accent);
+    color: var(--on-dark-accent);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+}
+
+QPushButton:hover {
+    background-color: var(--dark-accent-hover);
+}
