@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHNeoWave - Logiciel Scientifique Maritime</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">🌊</div>
+                    <div class="logo-text-container">
+                        <div class="logo-text">CHNeoWave</div>
+                        <div class="logo-subtitle">Système Maritime</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="nav-menu">
+                <div class="nav-section">
+                    <div class="nav-section-title">PROJET</div>
+                    <a href="#" class="nav-item active" data-view="dashboard">
+                        <i class="fas fa-tachometer-alt"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="project">
+                        <i class="fas fa-project-diagram"></i>
+                        <span>Configuration</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">ACQUISITION</div>
+                    <a href="#" class="nav-item" data-view="calibration">
+                        <i class="fas fa-sliders-h"></i>
+                        <span>Calibration</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="acquisition">
+                        <i class="fas fa-wave-square"></i>
+                        <span>Acquisition</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">ANALYSE</div>
+                    <a href="#" class="nav-item" data-view="analysis">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Analyse</span>
+                    </a>
+                    <a href="#" class="nav-item" data-view="export">
+                        <i class="fas fa-file-export"></i>
+                        <span>Export</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="theme-toggle" id="theme-toggle">
+                    <i class="fas fa-moon"></i>
+                    <span>Thème Sombre</span>
+                </div>
+                <div class="system-status">
+                    <div class="status-indicator online"></div>
+                    <span>Système Opérationnel</span>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h1 id="page-title">Dashboard Maritime</h1>
+                    <p id="page-subtitle">Vue d'ensemble du projet CHNeoWave</p>
+                </div>
+                <div class="header-actions">
+                    <div class="project-info">
+                        <div class="project-name">Projet: Bassin Océanique 2025</div>
+                    </div>
+                    <div class="status-badge">
+                        <div class="status-dot"></div>
+                        <span>En cours</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Dashboard View -->
+                <div class="module-content active" id="dashboard-view">
+                    <div class="dashboard-grid">
+                        <!-- Project Overview -->
+                        <div class="card project-overview">
+                            <div class="card-header">
+                                <div>
+                                    <h2 class="card-title">Vue d'ensemble du projet</h2>
+                                    <p class="card-subtitle">Statut global et métriques temps réel</p>
+                                </div>
+                            </div>
+                            
+                            <div class="project-stats">
+                                <div class="stat-item">
+                                    <div class="stat-value">16</div>
+                                    <div class="stat-label">Sondes Actives</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">256</div>
+                                    <div class="stat-label">Hz Échantillonnage</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-value">45:32</div>
+                                    <div class="stat-label">Temps d'Acquisition</div>
+                                </div>
+                            </div>
+
+                            <div class="wave-display">
+                                <div class="wave-grid"></div>
+                                <div class="wave-line"></div>
+                                <div class="wave-line"></div>
+                                <div class="wave-line"></div>
+                                <div class="wave-line"></div>
+                            </div>
+
+                            <button class="primary-action">
+                                <i class="fas fa-play"></i>
+                                Démarrer Acquisition
+                            </button>
+                        </div>
+
+                        <!-- Metrics Grid -->
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                </div>
+                                <div class="metric-value">98.5%</div>
+                                <div class="metric-label">Performance Système</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <i class="fas fa-memory"></i>
+                                </div>
+                                <div class="metric-value">2.4 GB</div>
+                                <div class="metric-label">Mémoire Utilisée</div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <div class="metric-value">1.2 TB</div>
+                                <div class="metric-label">Données Stockées</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calibration View -->
+                <div class="module-content" id="calibration-view">
+                    <div class="project-info-section">
+                        <div class="project-details">
+                            <h3>Configuration de Calibration</h3>
+                            <div class="project-details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Sonde Active:</span>
+                                    <span class="detail-value">Sonde #1 / 16</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Points Calibration:</span>
+                                    <span class="detail-value">5 points</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Type Mesure:</span>
+                                    <span class="detail-value">Bidirectionnelle</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Coefficient R²:</span>
+                                    <span class="detail-value">0.9987</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="calibration-setup">
+                        <h3>Calibration Sonde #1</h3>
+                        <div class="calibration-content">
+                            <div class="setup-controls">
+                                <div class="control-group">
+                                    <label>Sonde</label>
+                                    <select id="probe-select">
+                                        <option value="1">Sonde #1</option>
+                                        <option value="2">Sonde #2</option>
+                                        <option value="3">Sonde #3</option>
+                                        <option value="4">Sonde #4</option>
+                                    </select>
+                                </div>
+                                <div class="control-group">
+                                    <label>Points de Calibration</label>
+                                    <select id="calibration-points">
+                                        <option value="3">3 points</option>
+                                        <option value="5" selected>5 points</option>
+                                        <option value="10">10 points</option>
+                                    </select>
+                                </div>
+                                <div class="control-group">
+                                    <label>Type de Mesure</label>
+                                    <select id="measurement-type">
+                                        <option value="bidirectional" selected>Bidirectionnelle</option>
+                                        <option value="upward">Montée seule</option>
+                                        <option value="downward">Descente seule</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="chart-area">
+                                <div class="chart-header">
+                                    <h3>Linéarité de Calibration</h3>
+                                    <div class="chart-stats">
+                        <span><i class="fas fa-chart-line"></i> R² = 0.9987</span>
+                        <span><i class="fas fa-slope"></i> Pente = 2.45 V/cm</span>
+                        <span><i class="fas fa-offset"></i> Offset = -0.12 V</span>
+                    </div>
+                                </div>
+                                <canvas id="calibration-chart" width="400" height="300"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="table-header">
+                            <h3>Points de Calibration</h3>
+                            <div class="table-actions">
+                                <button class="btn btn-primary btn-sm">
+                                    <i class="fas fa-plus"></i> Ajouter Point
+                                </button>
+                                <button class="btn btn-secondary btn-sm">
+                                    <i class="fas fa-save"></i> Sauvegarder
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="calibration-table-container">
+                            <table class="calibration-table">
+                                <thead>
+                                    <tr>
+                                        <th>Point</th>
+                                        <th>Hauteur (cm)</th>
+                                        <th>Tension (V)</th>
+                                        <th>Direction</th>
+                                        <th>État</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>1</td>
+                                        <td>0.0</td>
+                                        <td>-0.12</td>
+                                        <td><i class="fas fa-arrow-down"></i></td>
+                                        <td><span class="status-validated">Validé</span></td>
+                                        <td>
+                                            <button class="btn btn-sm"><i class="fas fa-edit"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>2</td>
+                                        <td>10.0</td>
+                                        <td>24.38</td>
+                                        <td><i class="fas fa-arrow-up"></i></td>
+                                        <td><span class="status-validated">Validé</span></td>
+                                        <td>
+                                            <button class="btn btn-sm"><i class="fas fa-edit"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>3</td>
+                                        <td>20.0</td>
+                                        <td>48.88</td>
+                                        <td><i class="fas fa-arrow-down"></i></td>
+                                        <td><span class="status-validated">Validé</span></td>
+                                        <td>
+                                            <button class="btn btn-sm"><i class="fas fa-edit"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>4</td>
+                                        <td>30.0</td>
+                                        <td>73.38</td>
+                                        <td><i class="fas fa-arrow-up"></i></td>
+                                        <td><span class="status-calculated">Calculé</span></td>
+                                        <td>
+                                            <button class="btn btn-sm"><i class="fas fa-edit"></i></button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>5</td>
+                                        <td>40.0</td>
+                                        <td>97.88</td>
+                                        <td><i class="fas fa-arrow-down"></i></td>
+                                        <td><span class="status-pending">En attente</span></td>
+                                        <td>
+                                            <button class="btn btn-sm"><i class="fas fa-edit"></i></button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="calibration-actions">
+                            <div class="action-buttons">
+                                <button class="btn btn-primary">
+                                    <i class="fas fa-play"></i> Démarrer Calibration
+                                </button>
+                                <button class="btn btn-secondary">
+                                    <i class="fas fa-pause"></i> Pause
+                                </button>
+                                <button class="btn btn-success">
+                                    <i class="fas fa-check"></i> Valider
+                                </button>
+                                <button class="btn btn-warning">
+                                    <i class="fas fa-redo"></i> Recommencer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Acquisition View -->
+                <div class="module-content" id="acquisition-view">
+                    <div class="project-info-section">
+                        <div class="project-details">
+                            <h3>Configuration d'Acquisition</h3>
+                            <div class="project-details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Fréquence:</span>
+                                    <span class="detail-value">256 Hz</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Durée:</span>
+                                    <span class="detail-value">30 minutes</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Mode:</span>
+                                    <span class="detail-value">Continu</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Sondes Actives:</span>
+                                    <span class="detail-value">16/16</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Fréquence d'échantillonnage</label>
+                            <select id="sampling-frequency">
+                                <option value="32">32 Hz</option>
+                                <option value="64">64 Hz</option>
+                                <option value="128">128 Hz</option>
+                                <option value="256" selected>256 Hz</option>
+                                <option value="512">512 Hz</option>
+                                <option value="1000">1000 Hz</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Durée d'acquisition</label>
+                            <select id="acquisition-duration">
+                                <option value="10">10 secondes</option>
+                                <option value="60">1 minute</option>
+                                <option value="300">5 minutes</option>
+                                <option value="1800" selected>30 minutes</option>
+                                <option value="3600">60 minutes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Mode d'acquisition</label>
+                            <select id="acquisition-mode">
+                                <option value="continuous" selected>Continu</option>
+                                <option value="burst">Par salves</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Sonde A - Temps Réel</h3>
+                                <select id="probe-a-select">
+                                    <option value="1">Sonde #1</option>
+                                    <option value="2">Sonde #2</option>
+                                    <option value="3">Sonde #3</option>
+                                </select>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="probe-a-chart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Sonde B - Comparaison</h3>
+                                <select id="probe-b-select">
+                                    <option value="4">Sonde #4</option>
+                                    <option value="5">Sonde #5</option>
+                                    <option value="6">Sonde #6</option>
+                                </select>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="probe-b-chart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card full-width">
+                            <div class="card-header">
+                                <h3>Multi-Sondes</h3>
+                                <div class="probe-selector">
+                                    <label><input type="checkbox" checked> Sonde #1</label>
+                                    <label><input type="checkbox" checked> Sonde #2</label>
+                                    <label><input type="checkbox"> Sonde #3</label>
+                                    <label><input type="checkbox"> Sonde #4</label>
+                                </div>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="multi-probe-chart" width="800" height="300"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-icon">
+                                <i class="fas fa-ruler-vertical"></i>
+                            </div>
+                            <div class="metric-value">15.2</div>
+                            <div class="metric-label">Hs (cm)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div class="metric-value">28.7</div>
+                            <div class="metric-label">Hmax (cm)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="metric-value">-12.3</div>
+                            <div class="metric-label">Hmin (cm)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="metric-value">2.4</div>
+                            <div class="metric-label">Tm (s)</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-icon">
+                                <i class="fas fa-wave-square"></i>
+                            </div>
+                            <div class="metric-value">3.1</div>
+                            <div class="metric-label">Tp (s)</div>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-play"></i> Démarrer Acquisition
+                        </button>
+                        <button class="btn btn-warning">
+                            <i class="fas fa-stop"></i> Arrêter
+                        </button>
+                        <button class="btn btn-success">
+                            <i class="fas fa-save"></i> Sauvegarder
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Analysis View -->
+                <div class="module-content" id="analysis-view">
+                    <div class="project-info-section">
+                        <div class="project-details">
+                            <h3>Analyse des Données</h3>
+                            <div class="project-details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Session:</span>
+                                    <span class="detail-value">Session_2025_01_27_14_30</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Durée:</span>
+                                    <span class="detail-value">30 minutes</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Points:</span>
+                                    <span class="detail-value">460,800</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Validation:</span>
+                                    <span class="detail-value">ITTC Conforme</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Spectre de Puissance</h3>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="power-spectrum-chart" width="400" height="250"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Distribution des Hauteurs</h3>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="height-distribution-chart" width="400" height="250"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Rose de Houle</h3>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="wave-rose-chart" width="400" height="250"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3>Analyse JONSWAP</h3>
+                            </div>
+                            <div class="chart-area">
+                                <canvas id="jonswap-chart" width="400" height="250"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export View -->
+                <div class="module-content" id="export-view">
+                    <div class="project-info-section">
+                        <div class="project-details">
+                            <h3>Export et Rapports</h3>
+                            <div class="project-details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">Format:</span>
+                                    <span class="detail-value">HDF5 + CSV</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Taille:</span>
+                                    <span class="detail-value">2.4 GB</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">Statut:</span>
+                                    <span class="detail-value">Prêt</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Format d'export</label>
+                            <select id="export-format">
+                                <option value="hdf5">HDF5</option>
+                                <option value="csv">CSV</option>
+                                <option value="excel">Excel</option>
+                                <option value="matlab">MATLAB</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Dossier de destination</label>
+                            <input type="text" value="/exports/CHNeoWave_2025_01_27/" readonly>
+                        </div>
+                    </div>
+
+                    <div class="action-buttons">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-download"></i> Exporter Données
+                        </button>
+                        <button class="btn btn-success">
+                            <i class="fas fa-file-pdf"></i> Générer Rapport
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-archive"></i> Archiver Projet
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Project Settings View -->
+                <div class="module-content" id="project-view">
+                    <div class="project-info-section">
+                        <div class="project-details">
+                            <h3>Configuration du Projet</h3>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Nom du projet</label>
+                            <input type="text" value="Bassin Océanique 2025">
+                        </div>
+                        <div class="form-group">
+                            <label>Code projet</label>
+                            <input type="text" value="BO2025-001">
+                        </div>
+                        <div class="form-group">
+                            <label>Chef de projet</label>
+                            <input type="text" value="Dr. Marie Dubois">
+                        </div>
+                        <div class="form-group">
+                            <label>Ingénieur responsable</label>
+                            <input type="text" value="Ing. Jean Martin">
+                        </div>
+                        <div class="form-group">
+                            <label>Lieu d'essai</label>
+                            <select>
+                                <option value="bassin" selected>Bassin à houle</option>
+                                <option value="canal">Canal à houle</option>
+                                <option value="mer">Mer ouverte</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date prévue</label>
+                            <input type="date" value="2025-02-15">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre de sondes</label>
+                            <select>
+                                <option value="1">1 sonde</option>
+                                <option value="4">4 sondes</option>
+                                <option value="8">8 sondes</option>
+                                <option value="16" selected>16 sondes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Fréquence d'échantillonnage</label>
+                            <select>
+                                <option value="32">32 Hz</option>
+                                <option value="64">64 Hz</option>
+                                <option value="128">128 Hz</option>
+                                <option value="256" selected>256 Hz</option>
+                                <option value="512">512 Hz</option>
+                                <option value="1000">1000 Hz</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-primary">
+                            <i class="fas fa-save"></i> Sauvegarder Configuration
+                        </button>
+                        <button class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Annuler
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
