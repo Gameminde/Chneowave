@@ -1,0 +1,80 @@
+{
+  "timestamp": "2025-08-14T14:24:01.591882",
+  "system_info": {
+    "platform": "Linux-6.1.147-x86_64-with-glibc2.41",
+    "python_version": "3.13.3",
+    "architecture": "64bit",
+    "processor": "x86_64",
+    "cpu_count": 4,
+    "working_directory": "/workspace",
+    "python_path": "/usr/bin/python3",
+    "memory_info": "psutil non disponible"
+  },
+  "environment_check": {
+    "src_directory_exists": true,
+    "tests_directory_exists": true,
+    "required_packages": {
+      "numpy": "MISSING",
+      "scipy": "MISSING",
+      "PyQt6": "MISSING",
+      "PySide6": "MISSING",
+      "h5py": "MISSING",
+      "pyqtgraph": "MISSING",
+      "pytest": "MISSING",
+      "pytest-qt": "MISSING"
+    },
+    "optional_packages": {},
+    "qt_libraries": {
+      "PyQt6": "MISSING",
+      "PySide6": "MISSING"
+    },
+    "python_path": "Non défini"
+  },
+  "module_analysis": {
+    "hrneowave.core.config_manager": "FAILED: No module named 'hrneowave'",
+    "hrneowave.core.error_handler": "FAILED: No module named 'hrneowave'",
+    "hrneowave.core.performance_monitor": "FAILED: No module named 'hrneowave'",
+    "hrneowave.gui.main_window": "FAILED: No module named 'hrneowave'",
+    "hrneowave.acquisition.acquisition_controller": "FAILED: No module named 'hrneowave'"
+  },
+  "critical_issues": [
+    "Impossible d'importer hrneowave.core.config_manager: No module named 'hrneowave'",
+    "Impossible d'importer hrneowave.core.error_handler: No module named 'hrneowave'",
+    "Impossible d'importer hrneowave.core.performance_monitor: No module named 'hrneowave'",
+    "Impossible d'importer hrneowave.gui.main_window: No module named 'hrneowave'",
+    "Impossible d'importer hrneowave.acquisition.acquisition_controller: No module named 'hrneowave'",
+    "pytest non disponible"
+  ],
+  "warnings": [
+    "Package requis manquant: numpy",
+    "Package requis manquant: scipy",
+    "Package requis manquant: PyQt6",
+    "Package requis manquant: PySide6",
+    "Package requis manquant: h5py",
+    "Package requis manquant: pyqtgraph",
+    "Package requis manquant: pytest",
+    "Package requis manquant: pytest-qt",
+    "pytest-qt non disponible",
+    "pyqtgraph non disponible"
+  ],
+  "recommendations": [
+    {
+      "type": "CRITICAL",
+      "message": "Résoudre les problèmes critiques avant tout déploiement",
+      "priority": "IMMEDIATE"
+    },
+    {
+      "type": "TESTING",
+      "message": "Corriger la configuration pytest et les tests",
+      "priority": "HIGH"
+    }
+  ],
+  "overall_status": "CRITICAL",
+  "dependencies_analysis": {
+    "conflicts": [],
+    "version_issues": [],
+    "security_issues": [],
+    "pytest_qt": "MISSING",
+    "pyqtgraph": "MISSING"
+  }
+}
