@@ -1,0 +1,305 @@
+/* ==========================================================================
+   CHNeoWave Maritime Design System
+   Système de design maritime professionnel avec Golden Ratio
+   ========================================================================== */
+
+/* Variables CSS Maritimes */
+:root {
+  /* === PALETTE MARITIME OCÉANIQUE === */
+  
+  /* Couleurs primaires océaniques */
+  --ocean-deep: #0A1929;           /* Fond principal sombre */
+  --harbor-blue: #1565C0;          /* Bleu primaire actions */
+  --steel-blue: #1976D2;           /* Bleu secondaire */
+  --tidal-cyan: #00BCD4;           /* Cyan données temps réel */
+  --navy-blue: #0D47A1;            /* Bleu marine profond */
+  
+  /* Couleurs de surface */
+  --foam-white: #FAFBFC;           /* Fond principal clair */
+  --frost-light: #F5F7FA;          /* Surfaces secondaires */
+  --wave-gray: #E3F2FD;            /* Zones info */
+  --mist-gray: #ECEFF1;            /* Bordures subtiles */
+  --pearl-white: #FFFFFF;          /* Surfaces élevées */
+  
+  /* Couleurs texte */
+  --storm-gray: #37474F;           /* Texte principal */
+  --slate-gray: #546E7A;           /* Texte secondaire */
+  --anchor-gray: #78909C;          /* Texte tertiaire */
+  --text-on-dark: rgba(255,255,255,0.87); /* Texte mode sombre */
+  --text-on-dark-secondary: rgba(255,255,255,0.60);
+  
+  /* Couleurs sémantiques */
+  --coral-alert: #FF5722;          /* Erreurs critiques */
+  --emerald-success: #4CAF50;      /* Validations */
+  --amber-warning: #FF9800;        /* Avertissements */
+  --info-blue: #2196F3;           /* Informations */
+  
+  /* === PROPORTIONS GOLDEN RATIO === */
+  
+  /* Ratio φ = 1.618 */
+  --phi: 1.618;
+  --phi-inverse: 0.618;
+  
+  /* Séquence Fibonacci pour espacements */
+  --fibonacci-5: 5px;
+  --fibonacci-8: 8px;
+  --fibonacci-13: 13px;
+  --fibonacci-21: 21px;
+  --fibonacci-34: 34px;
+  --fibonacci-55: 55px;
+  --fibonacci-89: 89px;
+  --fibonacci-144: 144px;
+  
+  /* === TYPOGRAPHIE MARITIME === */
+  
+  /* Familles de polices */
+  --font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  
+  /* Échelle typographique basée sur φ */
+  --text-xs: 0.75rem;              /* 12px */
+  --text-sm: 0.875rem;             /* 14px */
+  --text-base: 1rem;               /* 16px */
+  --text-lg: 1.125rem;             /* 18px */
+  --text-xl: 1.25rem;              /* 20px */
+  --text-2xl: 1.5rem;              /* 24px */
+  --text-3xl: 1.875rem;            /* 30px */
+  --text-4xl: 2.25rem;             /* 36px */
+  
+  /* Poids de police */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* === DIMENSIONS ET ESPACEMENTS === */
+  
+  /* Sidebar et layout principal */
+  --sidebar-width: 300px;
+  --main-content-width: calc(var(--sidebar-width) * var(--phi)); /* ≈ 485px */
+  
+  /* Hauteurs standardisées */
+  --header-height: var(--fibonacci-89);
+  --nav-item-height: var(--fibonacci-55);
+  --button-height: var(--fibonacci-34);
+  --input-height: var(--fibonacci-34);
+  
+  /* Rayons de bordure */
+  --radius-sm: 4px;
+  --radius-md: var(--fibonacci-8);
+  --radius-lg: var(--fibonacci-13);
+  --radius-xl: var(--fibonacci-21);
+  
+  /* === OMBRES ET ÉLÉVATIONS === */
+  
+  --shadow-sm: 0 1px 2px rgba(10, 25, 41, 0.05);
+  --shadow-md: 0 4px 6px rgba(10, 25, 41, 0.07), 0 2px 4px rgba(10, 25, 41, 0.06);
+  --shadow-lg: 0 10px 15px rgba(10, 25, 41, 0.1), 0 4px 6px rgba(10, 25, 41, 0.05);
+  --shadow-xl: 0 20px 25px rgba(10, 25, 41, 0.1), 0 10px 10px rgba(10, 25, 41, 0.04);
+  
+  /* Ombres pour mode sombre */
+  --shadow-dark-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-dark-md: 0 4px 6px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-dark-lg: 0 10px 15px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.2);
+  
+  /* === TRANSITIONS ET ANIMATIONS === */
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* Courbes d'animation maritime */
+  --ease-wave: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-tide: cubic-bezier(0.19, 1, 0.22, 1);
+  --ease-current: cubic-bezier(0.77, 0, 0.175, 1);
+  
+  /* === Z-INDEX SYSTÈME === */
+  
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  --z-toast: 1080;
+}
+
+/* ==========================================================================
+   RESET ET BASE STYLES
+   ========================================================================== */
+
+/* Reset moderne */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-primary);
+  font-weight: var(--font-normal);
+  color: var(--storm-gray);
+  background-color: var(--foam-white);
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+/* ==========================================================================
+   THÈMES CLAIR/SOMBRE
+   ========================================================================== */
+
+/* Mode sombre */
+[data-theme="dark"] {
+  --foam-white: var(--ocean-deep);
+  --frost-light: #1A2332;
+  --wave-gray: #243447;
+  --mist-gray: #2D3E50;
+  --pearl-white: #34495E;
+  
+  --storm-gray: var(--text-on-dark);
+  --slate-gray: var(--text-on-dark-secondary);
+  --anchor-gray: rgba(255,255,255,0.45);
+  
+  /* Ombres adaptées au mode sombre */
+  --shadow-sm: var(--shadow-dark-sm);
+  --shadow-md: var(--shadow-dark-md);
+  --shadow-lg: var(--shadow-dark-lg);
+}
+
+/* ==========================================================================
+   LAYOUT PRINCIPAL GOLDEN RATIO
+   ========================================================================== */
+
+.maritime-app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  min-height: 100vh;
+  background: var(--foam-white);
+  transition: background-color var(--transition-normal);
+}
+
+/* ==========================================================================
+   UTILITAIRES GOLDEN RATIO
+   ========================================================================== */
+
+/* Grille Golden Ratio */
+.golden-grid {
+  display: grid;
+  gap: var(--fibonacci-21);
+}
+
+.golden-grid-2 {
+  grid-template-columns: 1fr var(--phi)fr;
+}
+
+.golden-grid-3 {
+  grid-template-columns: 1fr var(--phi)fr var(--phi)fr;
+}
+
+/* Proportions φ pour les cartes */
+.golden-card {
+  aspect-ratio: var(--phi) / 1;
+}
+
+.golden-card-inverse {
+  aspect-ratio: 1 / var(--phi);
+}
+
+/* Espacements Fibonacci */
+.space-fib-5 { margin: var(--fibonacci-5); }
+.space-fib-8 { margin: var(--fibonacci-8); }
+.space-fib-13 { margin: var(--fibonacci-13); }
+.space-fib-21 { margin: var(--fibonacci-21); }
+.space-fib-34 { margin: var(--fibonacci-34); }
+.space-fib-55 { margin: var(--fibonacci-55); }
+
+.gap-fib-5 { gap: var(--fibonacci-5); }
+.gap-fib-8 { gap: var(--fibonacci-8); }
+.gap-fib-13 { gap: var(--fibonacci-13); }
+.gap-fib-21 { gap: var(--fibonacci-21); }
+.gap-fib-34 { gap: var(--fibonacci-34); }
+
+/* ==========================================================================
+   ACCESSIBILITÉ
+   ========================================================================== */
+
+/* Focus visible pour navigation clavier */
+:focus-visible {
+  outline: 2px solid var(--harbor-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Réduction des animations pour utilisateurs sensibles */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Contraste élevé */
+@media (prefers-contrast: high) {
+  :root {
+    --storm-gray: #000000;
+    --slate-gray: #333333;
+    --harbor-blue: #0000FF;
+  }
+}
+
+/* ==========================================================================
+   RESPONSIVE BREAKPOINTS
+   ========================================================================== */
+
+/* Laboratoire standard 1366x768 */
+@media (max-width: 1366px) {
+  :root {
+    --sidebar-width: 250px;
+    --fibonacci-21: 18px;
+    --fibonacci-34: 28px;
+  }
+}
+
+/* Tablettes et petits écrans */
+@media (max-width: 1024px) {
+  .maritime-app {
+    grid-template-columns: 1fr;
+  }
+  
+  :root {
+    --sidebar-width: 100%;
+  }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  :root {
+    --fibonacci-21: 16px;
+    --fibonacci-34: 24px;
+    --fibonacci-55: 40px;
+  }
+}
+
+/* 4K et écrans haute résolution */
+@media (min-width: 2560px) {
+  :root {
+    --sidebar-width: 400px;
+    --fibonacci-21: 28px;
+    --fibonacci-34: 44px;
+    --fibonacci-55: 72px;
+  }
+  
+  html {
+    font-size: 18px;
+  }
+}

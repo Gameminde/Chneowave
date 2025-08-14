@@ -1,0 +1,579 @@
+/* =============================================================================
+   CALIBRATION INTERFACE STYLES
+   ============================================================================= */
+
+:root {
+    /* Calibration specific colors */
+    --calibration-primary: var(--harbor-blue);
+    --calibration-success: var(--emerald-success);
+    --calibration-warning: #f39c12;
+    --calibration-danger: #e74c3c;
+    --calibration-bg: rgba(46, 134, 171, 0.05);
+    
+    /* R² Quality indicators */
+    --r2-excellent: var(--emerald-success);  /* > 0.995 */
+    --r2-good: #2ecc71;                      /* 0.99 - 0.995 */
+    --r2-acceptable: #f39c12;                /* 0.98 - 0.99 */
+    --r2-poor: #e74c3c;                      /* < 0.98 */
+}
+
+/* =============================================================================
+   CALIBRATION HEADER
+   ============================================================================= */
+
+.calibration-header {
+    background: linear-gradient(135deg, var(--calibration-bg), rgba(76, 175, 80, 0.03));
+    border: 1px solid rgba(46, 134, 171, 0.15);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+    overflow: hidden;
+}
+
+.header-content {
+    padding: calc(var(--fibonacci-21) * 1px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: calc(var(--fibonacci-21) * 1px);
+}
+
+.header-title h1 {
+    font-size: 1.8rem;
+    font-weight: 600;
+    color: var(--calibration-primary);
+    margin: 0 0 calc(var(--fibonacci-5) * 1px) 0;
+    display: flex;
+    align-items: center;
+    gap: calc(var(--fibonacci-8) * 1px);
+}
+
+.header-title p {
+    color: #666;
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+/* Progress Indicator */
+.probe-progress {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: calc(var(--fibonacci-5) * 1px);
+    min-width: 200px;
+}
+
+.progress-info {
+    display: flex;
+    gap: calc(var(--fibonacci-5) * 1px);
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.current-probe {
+    font-weight: 600;
+    color: var(--calibration-primary);
+}
+
+.progress-bar {
+    width: 200px;
+    height: 8px;
+    background: rgba(46, 134, 171, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--calibration-primary), var(--calibration-success));
+    border-radius: 4px;
+    transition: width 0.5s ease;
+    position: relative;
+}
+
+.progress-fill::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.progress-percentage {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--calibration-primary);
+}
+
+/* =============================================================================
+   CALIBRATION CONTROLS
+   ============================================================================= */
+
+.calibration-controls {
+    background: var(--foam-white);
+    border: 1px solid rgba(46, 134, 171, 0.1);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    padding: calc(var(--fibonacci-21) * 1px);
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: calc(var(--fibonacci-13) * 1px);
+    align-items: end;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--fibonacci-5) * 1px);
+}
+
+.control-group label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--ocean-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.maritime-select,
+.maritime-input {
+    padding: calc(var(--fibonacci-8) * 1px);
+    border: 1px solid rgba(46, 134, 171, 0.3);
+    border-radius: calc(var(--fibonacci-3) * 1px);
+    font-size: 0.9rem;
+    background: var(--foam-white);
+    transition: all 0.3s ease;
+}
+
+.maritime-select:focus,
+.maritime-input:focus {
+    outline: none;
+    border-color: var(--calibration-primary);
+    box-shadow: 0 0 0 2px rgba(46, 134, 171, 0.1);
+}
+
+.control-actions {
+    display: flex;
+    gap: calc(var(--fibonacci-8) * 1px);
+    justify-content: flex-end;
+}
+
+/* =============================================================================
+   CALIBRATION TABLE
+   ============================================================================= */
+
+.calibration-table-section {
+    background: var(--foam-white);
+    border: 1px solid rgba(46, 134, 171, 0.1);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+    overflow: hidden;
+}
+
+.table-header {
+    padding: calc(var(--fibonacci-13) * 1px) calc(var(--fibonacci-21) * 1px);
+    background: var(--calibration-bg);
+    border-bottom: 1px solid rgba(46, 134, 171, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.table-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--calibration-primary);
+}
+
+.table-actions {
+    display: flex;
+    gap: calc(var(--fibonacci-5) * 1px);
+}
+
+.maritime-table-container {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.maritime-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.maritime-table th {
+    background: var(--calibration-bg);
+    padding: calc(var(--fibonacci-8) * 1px) calc(var(--fibonacci-13) * 1px);
+    text-align: left;
+    font-weight: 600;
+    color: var(--ocean-deep);
+    border-bottom: 2px solid rgba(46, 134, 171, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.maritime-table td {
+    padding: calc(var(--fibonacci-8) * 1px) calc(var(--fibonacci-13) * 1px);
+    border-bottom: 1px solid rgba(46, 134, 171, 0.1);
+    vertical-align: middle;
+}
+
+.maritime-table tbody tr:hover {
+    background: rgba(46, 134, 171, 0.05);
+}
+
+/* Point Status Badges */
+.point-status {
+    padding: calc(var(--fibonacci-3) * 1px) calc(var(--fibonacci-5) * 1px);
+    border-radius: calc(var(--fibonacci-3) * 1px);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-pending {
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}
+
+.status-measuring {
+    background: rgba(243, 156, 18, 0.1);
+    color: #f39c12;
+    animation: pulse 1.5s infinite;
+}
+
+.status-completed {
+    background: rgba(76, 175, 80, 0.1);
+    color: var(--emerald-success);
+}
+
+.status-error {
+    background: rgba(231, 76, 60, 0.1);
+    color: #e74c3c;
+}
+
+/* Direction Indicators */
+.direction-up {
+    color: var(--calibration-success);
+}
+
+.direction-down {
+    color: var(--calibration-primary);
+}
+
+/* =============================================================================
+   CALIBRATION RESULTS
+   ============================================================================= */
+
+.calibration-results {
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: calc(var(--fibonacci-13) * 1px);
+}
+
+.result-card {
+    background: var(--foam-white);
+    border: 1px solid rgba(46, 134, 171, 0.1);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    padding: calc(var(--fibonacci-13) * 1px);
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.result-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 134, 171, 0.15);
+}
+
+.result-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: calc(var(--fibonacci-5) * 1px);
+    margin-bottom: calc(var(--fibonacci-8) * 1px);
+}
+
+.result-header i {
+    color: var(--calibration-primary);
+    font-size: 1.1rem;
+}
+
+.result-header h4 {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--ocean-deep);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.result-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--calibration-primary);
+    margin-bottom: calc(var(--fibonacci-3) * 1px);
+    font-family: var(--font-mono);
+}
+
+.result-unit {
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: 500;
+}
+
+.result-status {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: calc(var(--fibonacci-3) * 1px);
+}
+
+/* R² Quality Classes */
+.r2-excellent {
+    color: var(--r2-excellent) !important;
+}
+
+.r2-good {
+    color: var(--r2-good) !important;
+}
+
+.r2-acceptable {
+    color: var(--r2-acceptable) !important;
+}
+
+.r2-poor {
+    color: var(--r2-poor) !important;
+}
+
+/* =============================================================================
+   LINEARITY CHART
+   ============================================================================= */
+
+.linearity-chart-section {
+    background: var(--foam-white);
+    border: 1px solid rgba(46, 134, 171, 0.1);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+    overflow: hidden;
+}
+
+.chart-header {
+    padding: calc(var(--fibonacci-13) * 1px) calc(var(--fibonacci-21) * 1px);
+    background: var(--calibration-bg);
+    border-bottom: 1px solid rgba(46, 134, 171, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.chart-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--calibration-primary);
+}
+
+.chart-controls {
+    display: flex;
+    gap: calc(var(--fibonacci-5) * 1px);
+}
+
+.chart-container {
+    padding: calc(var(--fibonacci-21) * 1px);
+    height: 400px;
+    position: relative;
+}
+
+.chart-container canvas {
+    max-height: 100%;
+}
+
+/* =============================================================================
+   CALIBRATION NAVIGATION
+   ============================================================================= */
+
+.calibration-navigation {
+    background: var(--foam-white);
+    border: 1px solid rgba(46, 134, 171, 0.1);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    padding: calc(var(--fibonacci-21) * 1px);
+}
+
+.nav-actions {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: calc(var(--fibonacci-13) * 1px);
+    align-items: center;
+}
+
+.nav-left {
+    justify-self: start;
+}
+
+.nav-center {
+    justify-self: center;
+}
+
+.nav-right {
+    justify-self: end;
+    display: flex;
+    gap: calc(var(--fibonacci-8) * 1px);
+}
+
+/* Button Styles */
+.btn-primary,
+.btn-secondary,
+.btn-success,
+.btn-outline {
+    padding: calc(var(--fibonacci-8) * 1px) calc(var(--fibonacci-13) * 1px);
+    border-radius: calc(var(--fibonacci-3) * 1px);
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--fibonacci-5) * 1px);
+    text-decoration: none;
+    border: none;
+}
+
+.btn-primary {
+    background: var(--calibration-primary);
+    color: var(--foam-white);
+}
+
+.btn-primary:hover {
+    background: #1e5f7a;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(46, 134, 171, 0.3);
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: var(--foam-white);
+}
+
+.btn-secondary:hover {
+    background: #545b62;
+    transform: translateY(-1px);
+}
+
+.btn-secondary:disabled {
+    background: #e9ecef;
+    color: #6c757d;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-success {
+    background: var(--calibration-success);
+    color: var(--foam-white);
+}
+
+.btn-success:hover {
+    background: #27ae60;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-sm {
+    padding: calc(var(--fibonacci-5) * 1px) calc(var(--fibonacci-8) * 1px);
+    font-size: 0.8rem;
+}
+
+/* =============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================= */
+
+@media (max-width: 1024px) {
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: calc(var(--fibonacci-13) * 1px);
+    }
+    
+    .probe-progress {
+        align-items: stretch;
+    }
+    
+    .controls-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .control-actions {
+        grid-column: 1 / -1;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 768px) {
+    .controls-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .results-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .nav-actions {
+        grid-template-columns: 1fr;
+        gap: calc(var(--fibonacci-8) * 1px);
+    }
+    
+    .nav-left,
+    .nav-center,
+    .nav-right {
+        justify-self: stretch;
+    }
+    
+    .nav-right {
+        flex-direction: column;
+    }
+    
+    .chart-container {
+        height: 300px;
+    }
+}
+
+@media (max-width: 480px) {
+    .results-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .table-header {
+        flex-direction: column;
+        gap: calc(var(--fibonacci-8) * 1px);
+        align-items: stretch;
+    }
+    
+    .chart-header {
+        flex-direction: column;
+        gap: calc(var(--fibonacci-8) * 1px);
+        align-items: stretch;
+    }
+    
+    .chart-controls {
+        justify-content: center;
+    }
+}

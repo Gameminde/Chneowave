@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHNeoWave - Accueil Projets</title>
+    <link rel="stylesheet" href="css/maritime_system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layouts.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/project-pages.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="project-start-page">
+    <div class="project-start-container">
+        <header class="project-header">
+            <div class="logo-section maritime-branding">
+                <div class="logo-icon">CHN</div>
+                <h1>CHNeoWave</h1>
+                <p>Système d'Analyse Maritime Professionnel</p>
+            </div>
+        </header>
+
+        <main class="project-actions">
+            <div class="action-cards-grid">
+                <div class="action-card create-project-card">
+                    <div class="card-icon"><i class="fas fa-folder-plus"></i></div>
+                    <h2>Créer un Projet</h2>
+                    <p>Démarrer une nouvelle campagne d'acquisition maritime</p>
+                    <button class="btn-primary maritime-btn" onclick="showCreateProject()">
+                        <i class="fas fa-plus"></i> Nouveau Projet
+                    </button>
+                </div>
+                
+                <div class="action-card import-project-card">
+                    <div class="card-icon"><i class="fas fa-folder-open"></i></div>
+                    <h2>Importer un Projet</h2>
+                    <p>Ouvrir un projet existant ou reprendre une session</p>
+                    <button class="btn-secondary maritime-btn" onclick="showImportProject()">
+                        <i class="fas fa-upload"></i> Importer Projet
+                    </button>
+                </div>
+            </div>
+
+            <div class="recent-projects-section">
+                <h3>Projets Récents</h3>
+                <div class="recent-projects-list">
+                    <div class="recent-project-item">
+                        <div class="project-info">
+                            <h4>Bassin IFREMER 2024</h4>
+                            <p>CHN-2024-015 • Modifié il y a 2 jours</p>
+                        </div>
+                        <button class="btn-outline btn-sm" onclick="openRecentProject('CHN-2024-015')">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div class="recent-project-item">
+                        <div class="project-info">
+                            <h4>Canal ECN Tests</h4>
+                            <p>CHN-2024-012 • Modifié il y a 1 semaine</p>
+                        </div>
+                        <button class="btn-outline btn-sm" onclick="openRecentProject('CHN-2024-012')">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                    <div class="recent-project-item">
+                        <div class="project-info">
+                            <h4>Essais Mer Méditerranée</h4>
+                            <p>CHN-2024-008 • Modifié il y a 2 semaines</p>
+                        </div>
+                        <button class="btn-outline btn-sm" onclick="openRecentProject('CHN-2024-008')">
+                            <i class="fas fa-arrow-right"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="project-footer">
+            <div class="footer-info">
+                <p>CHNeoWave v2.1.0 • Laboratoire Maritime • <span id="current-date"></span></p>
+            </div>
+        </footer>
+    </div>
+
+    <script src="js/project-navigation.js"></script>
+    <script>
+        // Afficher la date actuelle
+        document.getElementById('current-date').textContent = new Date().toLocaleDateString('fr-FR');
+    </script>
+</body>
+</html>

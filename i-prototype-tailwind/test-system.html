@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test CHNeoWave System</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .warning { background: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        .info { background: #d1ecf1; border-color: #bee5eb; color: #0c5460; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test du Système CHNeoWave</h1>
+    <div id="test-results"></div>
+    
+    <script src="./src/main-safe.js"></script>
+    <script>
+        function runTests() {
+            const results = [];
+            
+            // Test 1: Vérifier que CHNeoWave existe
+            if (typeof window.CHNeoWave !== 'undefined') {
+                results.push({
+                    type: 'success',
+                    title: 'Objet CHNeoWave',
+                    message: 'L\'objet global CHNeoWave est disponible'
+                });
+            } else {
+                results.push({
+                    type: 'error',
+                    title: 'Objet CHNeoWave',
+                    message: 'L\'objet global CHNeoWave n\'est pas disponible'
+                });
+                return results;
+            }
+            
+            // Test 2: Vérifier la version
+            if (window.CHNeoWave.version) {
+                results.push({
+                    type: 'info',
+                    title: 'Version',
+                    message: `Version détectée: ${window.CHNeoWave.version}`
+                });
+            } else {
+                results.push({
+                    type: 'warning',
+                    title: 'Version',
+                    message: 'Version non disponible'
+                });
+            }
+            
+            // Test 3: Vérifier l'initialisation
+            if (window.CHNeoWave.initialized) {
+                results.push({
+                    type: 'success',
+                    title: 'Initialisation',
+                    message: 'Le système est initialisé'
+                });
+            } else {
+                results.push({
+                    type: 'warning',
+                    title: 'Initialisation',
+                    message: 'Le système n\'est pas encore initialisé (normal si en cours)'
+                });
+            }
+            
+            // Test 4: Vérifier les services
+            if (window.CHNeoWave.dataService && window.CHNeoWave.statsService) {
+                results.push({
+                    type: 'success',
+                    title: 'Services',
+                    message: 'Les services de données et statistiques sont disponibles'
+                });
+                
+                // Test des services
+                try {
+                    const waveData = window.CHNeoWave.dataService.generateWaveData();
+                    const sensorData = window.CHNeoWave.dataService.generateSensorData(1);
+                    
+                    results.push({
+                        type: 'success',
+                        title: 'Test Services',
+                        message: 'Génération de données réussie',
+                        details: `Wave: ${JSON.stringify(waveData, null, 2)}\nSensor: ${JSON.stringify(sensorData, null, 2)}`
+                    });
+                } catch (error) {
+                    results.push({
+                        type: 'error',
+                        title: 'Test Services',
+                        message: `Erreur lors du test des services: ${error.message}`
+                    });
+                }
+            } else {
+                results.push({
+                    type: 'warning',
+                    title: 'Services',
+                    message: 'Les services ne sont pas encore disponibles'
+                });
+            }
+            
+            // Test 5: Vérifier les utilitaires
+            if (window.CHNeoWave.utils) {
+                try {
+                    const formattedTime = window.CHNeoWave.utils.formatTime(125);
+                    const formattedNumber = window.CHNeoWave.utils.formatNumber(3.14159, 2);
+                    
+                    results.push({
+                        type: 'success',
+                        title: 'Utilitaires',
+                        message: `Utilitaires fonctionnels: ${formattedTime}, ${formattedNumber}`
+                    });
+                } catch (error) {
+                    results.push({
+                        type: 'error',
+                        title: 'Utilitaires',
+                        message: `Erreur dans les utilitaires: ${error.message}`
+                    });
+                }
+            } else {
+                results.push({
+                    type: 'warning',
+                    title: 'Utilitaires',
+                    message: 'Les utilitaires ne sont pas disponibles'
+                });
+            }
+            
+            // Test 6: Vérifier le système de thème
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            if (currentTheme) {
+                results.push({
+                    type: 'success',
+                    title: 'Système de Thème',
+                    message: `Thème actuel: ${currentTheme}`
+                });
+            } else {
+                results.push({
+                    type: 'warning',
+                    title: 'Système de Thème',
+                    message: 'Aucun thème détecté'
+                });
+            }
+            
+            // Test 7: Vérifier localStorage
+            try {
+                localStorage.setItem('test-chneowave', 'test');
+                const testValue = localStorage.getItem('test-chneowave');
+                localStorage.removeItem('test-chneowave');
+                
+                if (testValue === 'test') {
+                    results.push({
+                        type: 'success',
+                        title: 'Local Storage',
+                        message: 'Local Storage fonctionnel'
+                    });
+                } else {
+                    results.push({
+                        type: 'error',
+                        title: 'Local Storage',
+                        message: 'Local Storage ne fonctionne pas correctement'
+                    });
+                }
+            } catch (error) {
+                results.push({
+                    type: 'error',
+                    title: 'Local Storage',
+                    message: `Local Storage indisponible: ${error.message}`
+                });
+            }
+            
+            return results;
+        }
+        
+        function displayResults(results) {
+            const container = document.getElementById('test-results');
+            container.innerHTML = '';
+            
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = `test-result ${result.type}`;
+                
+                let content = `<strong>${result.title}:</strong> ${result.message}`;
+                if (result.details) {
+                    content += `<pre>${result.details}</pre>`;
+                }
+                
+                div.innerHTML = content;
+                container.appendChild(div);
+            });
+            
+            // Résumé
+            const summary = document.createElement('div');
+            summary.className = 'test-result info';
+            const successCount = results.filter(r => r.type === 'success').length;
+            const totalCount = results.length;
+            summary.innerHTML = `<strong>Résumé:</strong> ${successCount}/${totalCount} tests réussis`;
+            container.appendChild(summary);
+        }
+        
+        // Attendre que le système soit initialisé
+        setTimeout(() => {
+            const results = runTests();
+            displayResults(results);
+        }, 2000);
+        
+        // Affichage immédiat
+        const initialResults = runTests();
+        displayResults(initialResults);
+    </script>
+</body>
+</html>

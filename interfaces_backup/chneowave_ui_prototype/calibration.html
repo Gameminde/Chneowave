@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calibration des Sondes - CHNeoWave</title>
+    
+    <!-- CSS Files -->
+    <link rel="stylesheet" href="css/maritime_system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layouts.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/project-pages.css">
+    <link rel="stylesheet" href="css/calibration.css">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Navigation Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-water"></i>
+                    <span>CHNeoWave</span>
+                </div>
+            </div>
+            
+            <div class="nav-menu">
+                <a href="index.html" class="nav-item">
+                    <i class="fas fa-tachometer-alt"></i>
+                    <span>Tableau de Bord</span>
+                </a>
+                <a href="calibration.html" class="nav-item active">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>Calibration</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Analyse</span>
+                </a>
+                <a href="#" class="nav-item">
+                    <i class="fas fa-cog"></i>
+                    <span>Configuration</span>
+                </a>
+            </div>
+        </nav>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Calibration Header -->
+            <header class="calibration-header">
+                <div class="header-content">
+                    <div class="header-title">
+                        <h1><i class="fas fa-sliders-h"></i> Calibration des Sondes</h1>
+                        <p>Configuration et validation des capteurs de hauteur de vague</p>
+                    </div>
+                    
+                    <!-- Progress Indicator -->
+                    <div class="probe-progress">
+                        <div class="progress-info">
+                            <span class="current-probe">Sonde <span id="currentProbeNumber">1</span></span>
+                            <span class="total-probes">sur <span id="totalProbes">4</span></span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" id="progressFill" style="width: 25%"></div>
+                        </div>
+                        <div class="progress-percentage" id="progressPercentage">25%</div>
+                    </div>
+                </div>
+            </header>
+            
+            <!-- Calibration Controls -->
+            <section class="calibration-controls">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label for="probeSelect">Sonde Actuelle</label>
+                        <select id="probeSelect" class="maritime-select">
+                            <option value="1">Sonde 1 - Avant Tribord</option>
+                            <option value="2">Sonde 2 - Avant Bâbord</option>
+                            <option value="3">Sonde 3 - Arrière Tribord</option>
+                            <option value="4">Sonde 4 - Arrière Bâbord</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="pointsCount">Nombre de Points</label>
+                        <input type="number" id="pointsCount" class="maritime-input" value="10" min="5" max="20">
+                    </div>
+                    
+                    <div class="control-group">
+                        <label for="measurementType">Type de Mesure</label>
+                        <select id="measurementType" class="maritime-select">
+                            <option value="bidirectional">Bidirectionnelle (Montée/Descente)</option>
+                            <option value="ascending">Montée uniquement</option>
+                            <option value="descending">Descente uniquement</option>
+                        </select>
+                    </div>
+                    
+                    <div class="control-actions">
+                        <button class="btn-secondary" id="resetCalibration">
+                            <i class="fas fa-undo"></i> Réinitialiser
+                        </button>
+                        <button class="btn-primary" id="startMeasurement">
+                            <i class="fas fa-play"></i> Démarrer Mesure
+                        </button>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Calibration Table -->
+            <section class="calibration-table-section">
+                <div class="table-header">
+                    <h3>Points de Calibration</h3>
+                    <div class="table-actions">
+                        <button class="btn-outline btn-sm" id="exportPoints">
+                            <i class="fas fa-download"></i> Exporter
+                        </button>
+                        <button class="btn-outline btn-sm" id="importPoints">
+                            <i class="fas fa-upload"></i> Importer
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="maritime-table-container">
+                    <table class="maritime-table" id="calibrationTable">
+                        <thead>
+                            <tr>
+                                <th>Point</th>
+                                <th>Hauteur (mm)</th>
+                                <th>Tension (V)</th>
+                                <th>Direction</th>
+                                <th>État</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="calibrationTableBody">
+                            <!-- Points will be populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+            
+            <!-- Calibration Results -->
+            <section class="calibration-results">
+                <div class="results-grid">
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="fas fa-chart-line"></i>
+                            <h4>Pente</h4>
+                        </div>
+                        <div class="result-value" id="slopeValue">2.847</div>
+                        <div class="result-unit">mV/mm</div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="fas fa-arrows-alt-v"></i>
+                            <h4>Offset</h4>
+                        </div>
+                        <div class="result-value" id="offsetValue">1.234</div>
+                        <div class="result-unit">V</div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="fas fa-check-circle"></i>
+                            <h4>R² Linéarité</h4>
+                        </div>
+                        <div class="result-value r2-excellent" id="r2Value">0.9987</div>
+                        <div class="result-status r2-excellent" id="r2Status">Excellente</div>
+                    </div>
+                    
+                    <div class="result-card">
+                        <div class="result-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <h4>Erreur Max</h4>
+                        </div>
+                        <div class="result-value" id="errorValue">0.12</div>
+                        <div class="result-unit">mm</div>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Linearity Chart -->
+            <section class="linearity-chart-section">
+                <div class="chart-header">
+                    <h3>Visualisation de la Linéarité</h3>
+                    <div class="chart-controls">
+                        <button class="btn-outline btn-sm" id="togglePoints">
+                            <i class="fas fa-eye"></i> Masquer Points
+                        </button>
+                        <button class="btn-outline btn-sm" id="fullscreenChart">
+                            <i class="fas fa-expand"></i> Plein Écran
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="chart-container">
+                    <canvas id="linearityChart"></canvas>
+                </div>
+            </section>
+            
+            <!-- Navigation Actions -->
+            <section class="calibration-navigation">
+                <div class="nav-actions">
+                    <div class="nav-left">
+                        <button class="btn-secondary" id="previousProbe" disabled>
+                            <i class="fas fa-chevron-left"></i> Sonde Précédente
+                        </button>
+                    </div>
+                    
+                    <div class="nav-center">
+                        <button class="btn-outline" id="saveCalibration">
+                            <i class="fas fa-save"></i> Sauvegarder
+                        </button>
+                    </div>
+                    
+                    <div class="nav-right">
+                        <button class="btn-secondary" id="nextProbe">
+                            Sonde Suivante <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button class="btn-success" id="finishCalibration" style="display: none;">
+                            <i class="fas fa-check"></i> Terminer Calibration
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <!-- JavaScript Files -->
+    <script src="js/ui-interactions.js"></script>
+    <script src="js/calibration-ui.js"></script>
+</body>
+</html>

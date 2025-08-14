@@ -1,0 +1,497 @@
+/* =============================================================================
+   PROJECT PAGES STYLING - CHNeoWave Maritime Interface
+   ============================================================================= */
+
+/* Variables spécifiques aux pages projet */
+:root {
+    --project-card-ratio: 1.618; /* Golden Ratio */
+    --project-spacing: calc(var(--fibonacci-34) * 1px);
+    --project-border-radius: calc(var(--fibonacci-13) * 1px);
+    --project-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    --project-shadow-hover: 0 20px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* Page d'accueil projet */
+.project-start-page {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-primary);
+    background: linear-gradient(135deg, var(--ocean-deep), var(--harbor-blue));
+    min-height: 100vh;
+    color: var(--foam-white);
+}
+
+.project-start-container {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: var(--project-spacing);
+}
+
+/* En-tête projet */
+.project-header {
+    text-align: center;
+    margin-bottom: calc(var(--fibonacci-55) * 1px);
+}
+
+.maritime-branding {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: calc(var(--fibonacci-13) * 1px);
+}
+
+.logo-icon {
+    width: 80px;
+    height: 80px;
+    background: var(--foam-white);
+    color: var(--harbor-blue);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    font-weight: bold;
+    margin-bottom: calc(var(--fibonacci-8) * 1px);
+    box-shadow: var(--project-shadow);
+}
+
+.project-header h1 {
+    font-size: 3rem;
+    font-weight: 300;
+    margin: 0;
+    color: var(--foam-white);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.project-header p {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    margin: 0;
+    font-weight: 300;
+}
+
+/* Grille des cartes d'action */
+.action-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: var(--project-spacing);
+    max-width: 800px;
+    margin-bottom: calc(var(--fibonacci-55) * 1px);
+}
+
+.action-card {
+    aspect-ratio: var(--project-card-ratio);
+    background: var(--foam-white);
+    color: var(--ocean-deep);
+    border-radius: var(--project-border-radius);
+    padding: var(--project-spacing);
+    text-align: center;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--project-shadow);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.action-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--project-shadow-hover);
+}
+
+.action-card:hover::before {
+    left: 100%;
+}
+
+.card-icon {
+    font-size: 3rem;
+    color: var(--harbor-blue);
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+}
+
+.action-card h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 calc(var(--fibonacci-13) * 1px) 0;
+    color: var(--ocean-deep);
+}
+
+.action-card p {
+    font-size: 1rem;
+    opacity: 0.8;
+    margin: 0 0 calc(var(--fibonacci-21) * 1px) 0;
+    line-height: 1.5;
+}
+
+/* Boutons maritime */
+.maritime-btn {
+    padding: calc(var(--fibonacci-13) * 1px) calc(var(--fibonacci-21) * 1px);
+    border: none;
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--fibonacci-8) * 1px);
+    text-decoration: none;
+    min-width: 160px;
+    justify-content: center;
+}
+
+.btn-primary {
+    background: var(--harbor-blue);
+    color: var(--foam-white);
+}
+
+.btn-primary:hover {
+    background: var(--ocean-deep);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--harbor-blue);
+    border: 2px solid var(--harbor-blue);
+}
+
+.btn-secondary:hover {
+    background: var(--harbor-blue);
+    color: var(--foam-white);
+    transform: translateY(-2px);
+}
+
+/* Section projets récents */
+.recent-projects-section {
+    width: 100%;
+    max-width: 800px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: var(--project-border-radius);
+    padding: var(--project-spacing);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.recent-projects-section h3 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    margin: 0 0 calc(var(--fibonacci-21) * 1px) 0;
+    color: var(--foam-white);
+    text-align: center;
+}
+
+.recent-projects-list {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--fibonacci-13) * 1px);
+}
+
+.recent-project-item {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    padding: calc(var(--fibonacci-13) * 1px);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.recent-project-item:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateX(4px);
+}
+
+.project-info h4 {
+    font-size: 1.1rem;
+    font-weight: 500;
+    margin: 0 0 4px 0;
+    color: var(--foam-white);
+}
+
+.project-info p {
+    font-size: 0.9rem;
+    opacity: 0.8;
+    margin: 0;
+    color: var(--foam-white);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: var(--foam-white);
+    padding: calc(var(--fibonacci-8) * 1px);
+    border-radius: calc(var(--fibonacci-5) * 1px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+}
+
+.btn-outline:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+}
+
+.btn-sm {
+    font-size: 0.9rem;
+    padding: calc(var(--fibonacci-5) * 1px) calc(var(--fibonacci-8) * 1px);
+}
+
+/* Footer projet */
+.project-footer {
+    margin-top: auto;
+    padding-top: calc(var(--fibonacci-34) * 1px);
+    text-align: center;
+}
+
+.footer-info p {
+    font-size: 0.9rem;
+    opacity: 0.7;
+    margin: 0;
+    color: var(--foam-white);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .action-cards-grid {
+        grid-template-columns: 1fr;
+        max-width: 400px;
+    }
+    
+    .project-header h1 {
+        font-size: 2rem;
+    }
+    
+    .project-start-container {
+        padding: calc(var(--fibonacci-21) * 1px);
+    }
+    
+    .action-card {
+        aspect-ratio: 1.2;
+    }
+}
+
+@media (max-width: 480px) {
+    .project-header h1 {
+        font-size: 1.8rem;
+    }
+    
+    .card-icon {
+        font-size: 2.5rem;
+    }
+    
+    .action-card h2 {
+        font-size: 1.3rem;
+    }
+    
+    .maritime-btn {
+        min-width: 140px;
+        font-size: 0.9rem;
+    }
+}
+
+/* =============================================================================
+   PROJECT INFO BANNER - Dashboard Integration
+   ============================================================================= */
+
+.project-info-banner {
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.1), rgba(76, 175, 80, 0.05));
+    border: 1px solid rgba(46, 134, 171, 0.2);
+    border-radius: calc(var(--fibonacci-8) * 1px);
+    margin-bottom: calc(var(--fibonacci-21) * 1px);
+    backdrop-filter: blur(10px);
+}
+
+.project-info-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: calc(var(--fibonacci-21) * 1px);
+    gap: calc(var(--fibonacci-21) * 1px);
+}
+
+.project-main-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--fibonacci-13) * 1px);
+}
+
+.project-title {
+    display: flex;
+    align-items: center;
+    gap: calc(var(--fibonacci-13) * 1px);
+    margin-bottom: calc(var(--fibonacci-8) * 1px);
+}
+
+.project-title h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--harbor-blue);
+}
+
+.project-code {
+    background: var(--harbor-blue);
+    color: var(--foam-white);
+    padding: calc(var(--fibonacci-3) * 1px) calc(var(--fibonacci-8) * 1px);
+    border-radius: calc(var(--fibonacci-3) * 1px);
+    font-size: 0.8rem;
+    font-weight: 500;
+    font-family: var(--font-mono);
+    letter-spacing: 0.5px;
+}
+
+.project-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: calc(var(--fibonacci-8) * 1px) calc(var(--fibonacci-21) * 1px);
+}
+
+.project-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.detail-label {
+    font-size: 0.8rem;
+    color: #666;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-value {
+    font-size: 0.95rem;
+    color: var(--ocean-deep);
+    font-weight: 600;
+}
+
+.status-active {
+    color: var(--emerald-success) !important;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-active::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    background: var(--emerald-success);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.2);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.project-actions {
+    display: flex;
+    gap: calc(var(--fibonacci-8) * 1px);
+    align-items: center;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 1px solid var(--harbor-blue);
+    color: var(--harbor-blue);
+    padding: calc(var(--fibonacci-5) * 1px) calc(var(--fibonacci-8) * 1px);
+    border-radius: calc(var(--fibonacci-3) * 1px);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--fibonacci-3) * 1px);
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.btn-outline:hover {
+    background: var(--harbor-blue);
+    color: var(--foam-white);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(46, 134, 171, 0.3);
+}
+
+.btn-sm {
+    padding: calc(var(--fibonacci-5) * 1px) calc(var(--fibonacci-8) * 1px);
+    font-size: 0.8rem;
+}
+
+/* Responsive pour la bannière */
+@media (max-width: 768px) {
+    .project-info-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: calc(var(--fibonacci-13) * 1px);
+    }
+    
+    .project-details {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .project-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+@media (max-width: 480px) {
+    .project-details {
+        grid-template-columns: 1fr;
+    }
+    
+    .project-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: calc(var(--fibonacci-5) * 1px);
+    }
+    
+    .project-actions {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-outline {
+        width: 100%;
+        justify-content: center;
+    }
+}

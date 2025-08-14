@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHNeoWave - Création de Projet</title>
+    <link rel="stylesheet" href="css/maritime_system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layouts.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/project-pages.css">
+    <link rel="stylesheet" href="css/project-form.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="project-create-page">
+    <div class="project-create-container">
+        <header class="create-header">
+            <div class="header-nav">
+                <button class="btn-back" onclick="window.location.href='project-start.html'">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </button>
+                <div class="header-title">
+                    <h1>Création de Projet Maritime</h1>
+                    <p>Configuration d'une nouvelle campagne d'acquisition</p>
+                </div>
+            </div>
+            
+            <!-- Indicateur de progression -->
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div class="progress-fill"></div>
+                </div>
+                <div class="step-indicators">
+                    <div class="step-indicator active">
+                        <span class="step-number">1</span>
+                        <span class="step-label">Informations</span>
+                    </div>
+                    <div class="step-indicator">
+                        <span class="step-number">2</span>
+                        <span class="step-label">Configuration</span>
+                    </div>
+                    <div class="step-indicator">
+                        <span class="step-number">3</span>
+                        <span class="step-label">Validation</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="form-container">
+            <form id="project-form" class="project-form">
+                <!-- Étape 1: Informations Générales -->
+                <div class="form-step" id="step-1">
+                    <div class="step-content">
+                        <h2><i class="fas fa-info-circle"></i> Informations Générales</h2>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="project-name">Nom du Projet *</label>
+                                <input type="text" id="project-name" name="projectName" required 
+                                       placeholder="Ex: Bassin IFREMER 2024">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="project-code">Code Projet *</label>
+                                <input type="text" id="project-code" name="projectCode" required 
+                                       placeholder="Ex: CHN-2024-016" pattern="CHN-[0-9]{4}-[0-9]{3}">
+                                <small>Format: CHN-YYYY-XXX</small>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="project-leader">Chef de Projet *</label>
+                                <input type="text" id="project-leader" name="projectLeader" required 
+                                       placeholder="Nom du responsable">
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="project-location">Localisation *</label>
+                                <select id="project-location" name="projectLocation" required>
+                                    <option value="">Sélectionner un site</option>
+                                    <option value="ifremer-brest">IFREMER Brest</option>
+                                    <option value="ecn-nantes">École Centrale Nantes</option>
+                                    <option value="ensta-bretagne">ENSTA Bretagne</option>
+                                    <option value="mediterranee">Mer Méditerranée</option>
+                                    <option value="autre">Autre site</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group full-width">
+                                <label for="project-description">Description</label>
+                                <textarea id="project-description" name="projectDescription" 
+                                          placeholder="Description détaillée du projet et objectifs" rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Étape 2: Configuration Acquisition -->
+                <div class="form-step" id="step-2" style="display: none;">
+                    <div class="step-content">
+                        <h2><i class="fas fa-cogs"></i> Configuration d'Acquisition</h2>
+                        
+                        <div class="config-sections">
+                            <div class="config-section">
+                                <h3>Paramètres de Mesure</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="nb-sondes">Nombre de Sondes *</label>
+                                        <input type="number" id="nb-sondes" name="nbSondes" required 
+                                               min="1" max="16" value="4">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="freq-acquisition">Fréquence d'Acquisition *</label>
+                                        <select id="freq-acquisition" name="freqAcquisition" required>
+                                            <option value="100">100 Hz</option>
+                                            <option value="200" selected>200 Hz</option>
+                                            <option value="500">500 Hz</option>
+                                            <option value="1000">1000 Hz</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="duree-acquisition">Durée d'Acquisition</label>
+                                        <input type="number" id="duree-acquisition" name="dureeAcquisition" 
+                                               placeholder="Secondes" min="1" value="60">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="type-mesure">Type de Mesure *</label>
+                                        <select id="type-mesure" name="typeMesure" required>
+                                            <option value="hauteur">Hauteur d'eau</option>
+                                            <option value="pression">Pression</option>
+                                            <option value="vitesse">Vitesse</option>
+                                            <option value="mixte">Mesures mixtes</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="config-section">
+                                <h3>Configuration Matériel</h3>
+                                <div class="form-grid">
+                                    <div class="form-group">
+                                        <label for="interface-type">Interface d'Acquisition</label>
+                                        <select id="interface-type" name="interfaceType">
+                                            <option value="usb">USB Direct</option>
+                                            <option value="ethernet" selected>Ethernet</option>
+                                            <option value="wifi">WiFi</option>
+                                            <option value="serie">Série RS232</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="calibration-auto">Calibration Automatique</label>
+                                        <div class="checkbox-group">
+                                            <input type="checkbox" id="calibration-auto" name="calibrationAuto" checked>
+                                            <label for="calibration-auto">Activer la calibration automatique</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="form-group full-width">
+                                        <label for="config-notes">Notes de Configuration</label>
+                                        <textarea id="config-notes" name="configNotes" 
+                                                  placeholder="Notes spécifiques sur la configuration matériel" rows="3"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Étape 3: Validation -->
+                <div class="form-step" id="step-3" style="display: none;">
+                    <div class="step-content">
+                        <h2><i class="fas fa-check-circle"></i> Validation du Projet</h2>
+                        
+                        <div class="validation-summary">
+                            <div class="summary-card">
+                                <h3>Résumé du Projet</h3>
+                                <div class="summary-grid">
+                                    <div class="summary-item">
+                                        <strong>Nom:</strong>
+                                        <span id="summary-name">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <strong>Code:</strong>
+                                        <span id="summary-code">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <strong>Chef de Projet:</strong>
+                                        <span id="summary-leader">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <strong>Localisation:</strong>
+                                        <span id="summary-location">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <strong>Nombre de Sondes:</strong>
+                                        <span id="summary-sondes">-</span>
+                                    </div>
+                                    <div class="summary-item">
+                                        <strong>Fréquence:</strong>
+                                        <span id="summary-freq">-</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="validation-checklist">
+                                <h3>Vérifications</h3>
+                                <div class="checklist-items">
+                                    <div class="checklist-item">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Configuration matériel validée</span>
+                                    </div>
+                                    <div class="checklist-item">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Paramètres d'acquisition définis</span>
+                                    </div>
+                                    <div class="checklist-item">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Informations projet complètes</span>
+                                    </div>
+                                    <div class="checklist-item">
+                                        <i class="fas fa-check-circle"></i>
+                                        <span>Prêt pour la calibration</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons de navigation -->
+                <div class="form-navigation">
+                    <button type="button" id="prev-step" class="btn-secondary" 
+                            onclick="projectFormManager.prevStep()" style="display: none;">
+                        <i class="fas fa-arrow-left"></i> Précédent
+                    </button>
+                    
+                    <button type="button" id="next-step" class="btn-primary" 
+                            onclick="nextStepWithValidation()">
+                        Suivant <i class="fas fa-arrow-right"></i>
+                    </button>
+                    
+                    <button type="button" id="submit-project" class="btn-success" 
+                            onclick="createProjectDemo()" style="display: none;">
+                        <i class="fas fa-rocket"></i> Créer le Projet
+                    </button>
+                </div>
+            </form>
+        </main>
+    </div>
+
+    <script src="js/project-navigation.js"></script>
+    <script src="js/project-form.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHNeoWave - Écran de Lancement Maritime</title>
+    <link rel="stylesheet" href="css/launch-screen.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <meta name="description" content="CHNeoWave - Interface maritime professionnelle pour laboratoires d'étude de houle">
+    <meta name="theme-color" content="#1e3a5f">
+</head>
+<body>
+    <div class="launch-container">
+        <!-- En-tête maritime avec identité visuelle -->
+        <header class="maritime-header">
+            <div class="brand-logo">🌊 CHNeoWave</div>
+            <div class="brand-subtitle">Laboratoire Maritime Méditerranéen</div>
+            <div class="brand-description">
+                Interface professionnelle pour l'étude de la houle sur modèles réduits<br>
+                Bassins et canaux d'expérimentation maritime
+            </div>
+        </header>
+
+        <!-- Section principale pour la gestion des projets -->
+        <main class="main-section">
+            <h2 class="section-title">Gestion des Projets Maritimes</h2>
+            
+            <!-- Cartes d'action en Golden Ratio -->
+            <div class="action-grid">
+                <div class="action-card" onclick="createProject()" tabindex="0" role="button" aria-label="Créer un nouveau projet maritime">
+                    <div class="card-icon">⚓</div>
+                    <h3 class="card-title">Nouveau Projet</h3>
+                    <p class="card-description">
+                        Initialiser une nouvelle campagne d'étude maritime avec configuration automatisée des capteurs et paramètres d'acquisition
+                    </p>
+                </div>
+                
+                <div class="action-card" onclick="openProject()" tabindex="0" role="button" aria-label="Ouvrir un projet maritime existant">
+                    <div class="card-icon">🗂️</div>
+                    <h3 class="card-title">Ouvrir Projet</h3>
+                    <p class="card-description">
+                        Reprendre le travail sur une campagne existante avec restauration complète de l'état d'acquisition
+                    </p>
+                </div>
+                
+                <div class="action-card" onclick="importProject()" tabindex="0" role="button" aria-label="Importer des données maritimes">
+                    <div class="card-icon">📊</div>
+                    <h3 class="card-title">Importer Données</h3>
+                    <p class="card-description">
+                        Importer et analyser des données de houle existantes depuis différents formats et sources
+                    </p>
+                </div>
+                
+                <div class="action-card" onclick="quickCalibration()" tabindex="0" role="button" aria-label="Calibration rapide des capteurs">
+                    <div class="card-icon">⚙️</div>
+                    <h3 class="card-title">Calibration Rapide</h3>
+                    <p class="card-description">
+                        Lancer une séquence de calibration automatisée des capteurs de houle et validation système
+                    </p>
+                </div>
+            </div>
+
+            <!-- Section projets récents -->
+            <section class="recent-projects">
+                <h3 class="recent-title">📋 Projets Récents</h3>
+                <div class="recent-grid" id="recentProjectsGrid">
+                    <!-- Les projets récents seront chargés dynamiquement -->
+                    <div class="recent-item" onclick="openRecentProject('projet-houle-med-2024')">
+                        <div class="recent-name">Étude Houle Méditerranée 2024</div>
+                        <div class="recent-date">Modifié il y a 2 heures</div>
+                    </div>
+                    <div class="recent-item" onclick="openRecentProject('calibration-capteurs-jan')">
+                        <div class="recent-name">Calibration Capteurs Janvier</div>
+                        <div class="recent-date">Modifié hier</div>
+                    </div>
+                    <div class="recent-item" onclick="openRecentProject('analyse-tempete-dec')">
+                        <div class="recent-name">Analyse Tempête Décembre</div>
+                        <div class="recent-date">Modifié il y a 3 jours</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- Pied de page avec informations système et navigation -->
+        <footer class="maritime-footer">
+            <div class="system-info">
+                <span id="systemVersion">CHNeoWave v1.1.0</span>
+                <span id="systemStatus">🟢 Système opérationnel</span>
+                <span id="lastUpdate">Dernière sync: <span id="lastSyncTime">Maintenant</span></span>
+                <span id="sensorStatus">Capteurs: <span id="sensorCount">4</span> connectés</span>
+            </div>
+            
+            <nav class="footer-links">
+                <a href="#" class="footer-link" onclick="showAbout()" aria-label="À propos de CHNeoWave">ℹ️ À Propos</a>
+                <a href="#" class="footer-link" onclick="showHelp()" aria-label="Aide et documentation">❓ Aide</a>
+                <a href="#" class="footer-link" onclick="showPreferences()" aria-label="Préférences système">⚙️ Préférences</a>
+                <a href="#" class="footer-link" onclick="toggleTheme()" aria-label="Basculer le thème">🌙 Thème</a>
+            </nav>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/launch-screen.js"></script>
+    
+    <!-- Gestion des raccourcis clavier -->
+    <script>
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey) {
+                switch(e.key) {
+                    case 'n': e.preventDefault(); createProject(); break;
+                    case 'o': e.preventDefault(); openProject(); break;
+                    case 'i': e.preventDefault(); importProject(); break;
+                    case 'r': e.preventDefault(); quickCalibration(); break;
+                }
+            }
+        });
+    </script>
+</body>
+</html>

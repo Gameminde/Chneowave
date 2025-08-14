@@ -1,0 +1,198 @@
+@import "tailwindcss";
+
+/* 🔄 PHASE 2 - PRODUCTION THEME SYSTEM : Tokens centralisés, contrastes ≥7:1 */
+@import './styles/production-theme-system.css';
+@import './styles/golden-ratio-design.css';
+
+/* 🔍 PHASE 3 - ACCESSIBILITÉ WCAG 2.1 : Focus, navigation clavier, lecteurs d'écran */
+:root {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.4;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Professional Component Styles */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Remove gaming-like elements */
+* {
+  box-sizing: border-box;
+}
+
+/* Professional button styles */
+.btn-primary {
+  background-color: var(--accent-primary);
+  color: var(--text-inverse);
+  border: 1px solid var(--accent-primary);
+  padding: 8px 16px;
+  font-size: var(--text-base);
+  border-radius: 2px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-primary-hover);
+  border-color: var(--accent-primary-hover);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-primary);
+  padding: 8px 16px;
+  font-size: var(--text-base);
+  border-radius: 2px;
+  cursor: pointer;
+  font-weight: 400;
+  transition: all 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-secondary);
+  color: var(--text-primary);
+}
+
+html.dark {
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Utilities via JSX classes only for now (remove build error) */
+
+/* ============ ACCESSIBILITÉ WCAG 2.1 - PHASE 3 ============ */
+
+/* Focus visible pour navigation clavier */
+.keyboard-user *:focus {
+  outline: 2px solid var(--accent-primary) !important;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Screen reader only */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Skip link */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  z-index: 1100;
+  padding: 8px 16px;
+  background: var(--accent-primary);
+  color: var(--text-inverse);
+  text-decoration: none;
+  border-radius: 4px;
+  font-weight: 600;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 6px !important;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --border-primary: #000000;
+    --text-primary: #000000;
+    --bg-primary: #ffffff;
+    --accent-primary: #0000ff;
+  }
+  
+  button, [role="button"] {
+    border: 2px solid currentColor !important;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Touch improvements pour mobile */
+@media (hover: none) and (pointer: coarse) {
+  button, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"] {
+    min-height: 48px;
+    min-width: 48px;
+    touch-action: manipulation;
+  }
+}
+
+/* Amélioration contrastes pour éléments interactifs */
+button:focus,
+[role="button"]:focus,
+input:focus,
+select:focus,
+textarea:focus,
+[tabindex]:focus {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Indicateurs visuels pour états ARIA */
+[aria-invalid="true"] {
+  border-color: var(--status-error) !important;
+}
+
+[aria-required="true"] label::after {
+  content: ' *';
+  color: var(--status-error);
+}
+
+[aria-busy="true"] {
+  cursor: wait;
+}
+
+/* Support lecteurs d'écran pour états dynamiques */
+[aria-live] {
+  position: relative;
+}
+
+/* Amélioration pour utilisateurs avec troubles visuels */
+@media (prefers-reduced-transparency) {
+  .bg-overlay,
+  [style*="opacity"] {
+    opacity: 1 !important;
+  }
+}

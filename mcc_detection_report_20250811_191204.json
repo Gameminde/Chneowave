@@ -1,0 +1,174 @@
+{
+  "timestamp": "2025-08-11T19:12:04.795995",
+  "detection_history": [],
+  "current_cards": {
+    "usb_cards": [
+      {
+        "id": 0,
+        "name": "USB-1608G",
+        "type": "USB",
+        "connection": "USB",
+        "channels": 8,
+        "sample_rate_max": 100000,
+        "resolution": 16,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Connected",
+        "serial_number": "USB1608G-001",
+        "firmware_version": "2.1.0",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:52.881876"
+      },
+      {
+        "id": 1,
+        "name": "USB-1208HS",
+        "type": "USB",
+        "connection": "USB",
+        "channels": 8,
+        "sample_rate_max": 50000,
+        "resolution": 12,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Connected",
+        "serial_number": "USB1208HS-002",
+        "firmware_version": "1.8.2",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:52.881900"
+      }
+    ],
+    "udp_cards": [
+      {
+        "id": 100,
+        "name": "UDP-1608G",
+        "type": "UDP",
+        "connection": "UDP",
+        "ip_address": "192.168.1.100",
+        "port": 8000,
+        "channels": 8,
+        "sample_rate_max": 100000,
+        "resolution": 16,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Disconnected",
+        "serial_number": "UDP1608G-001",
+        "firmware_version": "2.1.0",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:52.986297",
+        "response_time": 15
+      },
+      {
+        "id": 101,
+        "name": "UDP-1208HS",
+        "type": "UDP",
+        "connection": "UDP",
+        "ip_address": "192.168.1.101",
+        "port": 8001,
+        "channels": 8,
+        "sample_rate_max": 50000,
+        "resolution": 12,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Disconnected",
+        "serial_number": "UDP1208HS-002",
+        "firmware_version": "1.8.2",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:53.991557",
+        "response_time": 25
+      }
+    ],
+    "all_cards": [
+      {
+        "id": 0,
+        "name": "USB-1608G",
+        "type": "USB",
+        "connection": "USB",
+        "channels": 8,
+        "sample_rate_max": 100000,
+        "resolution": 16,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Connected",
+        "serial_number": "USB1608G-001",
+        "firmware_version": "2.1.0",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:52.881876"
+      },
+      {
+        "id": 1,
+        "name": "USB-1208HS",
+        "type": "USB",
+        "connection": "USB",
+        "channels": 8,
+        "sample_rate_max": 50000,
+        "resolution": 12,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Connected",
+        "serial_number": "USB1208HS-002",
+        "firmware_version": "1.8.2",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:52.881900"
+      },
+      {
+        "id": 100,
+        "name": "UDP-1608G",
+        "type": "UDP",
+        "connection": "UDP",
+        "ip_address": "192.168.1.100",
+        "port": 8000,
+        "channels": 8,
+        "sample_rate_max": 100000,
+        "resolution": 16,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Disconnected",
+        "serial_number": "UDP1608G-001",
+        "firmware_version": "2.1.0",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:52.986297",
+        "response_time": 15
+      },
+      {
+        "id": 101,
+        "name": "UDP-1208HS",
+        "type": "UDP",
+        "connection": "UDP",
+        "ip_address": "192.168.1.101",
+        "port": 8001,
+        "channels": 8,
+        "sample_rate_max": 50000,
+        "resolution": 12,
+        "voltage_range": [
+          -10.0,
+          10.0
+        ],
+        "status": "Disconnected",
+        "serial_number": "UDP1208HS-002",
+        "firmware_version": "1.8.2",
+        "driver_version": "1.0.0",
+        "last_seen": "2025-08-11T19:11:53.991557",
+        "response_time": 25
+      }
+    ]
+  },
+  "summary": {
+    "total_detections": 0,
+    "current_usb_count": 2,
+    "current_udp_count": 2,
+    "current_total_count": 4
+  }
+}

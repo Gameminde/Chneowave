@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHNeoWave - Maritime Analysis Dashboard</title>
+    <link rel="stylesheet" href="css/maritime_system.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/layouts.css">
+    <link rel="stylesheet" href="css/themes.css">
+    <link rel="stylesheet" href="css/animations.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body class="maritime-app" data-theme="light">
+    <!-- Navigation Sidebar -->
+    <nav class="maritime-sidebar">
+        <div class="logo-section">
+            <div class="logo-icon">CHN</div>
+            <div class="logo-content">
+                <span class="logo-text">CHNeoWave</span>
+                <span class="logo-subtitle">Maritime Analysis</span>
+            </div>
+        </div>
+        
+        <ul class="nav-items">
+            <li class="nav-item active" data-view="dashboard">
+                <div class="nav-icon"><i class="fas fa-chart-bar"></i></div>
+                <span class="nav-text">Dashboard</span>
+                <div class="nav-indicator"></div>
+            </li>
+            <li class="nav-item" data-view="calibration">
+                <div class="nav-icon"><i class="fas fa-cog"></i></div>
+                <span class="nav-text">Calibration</span>
+                <div class="nav-indicator"></div>
+            </li>
+            <li class="nav-item" data-view="acquisition">
+                <div class="nav-icon"><i class="fas fa-satellite-dish"></i></div>
+                <span class="nav-text">Acquisition</span>
+                <div class="nav-indicator"></div>
+            </li>
+            <li class="nav-item" data-view="analysis">
+                <div class="nav-icon"><i class="fas fa-chart-line"></i></div>
+                <span class="nav-text">Analyse</span>
+                <div class="nav-indicator"></div>
+            </li>
+            <li class="nav-item" data-view="export">
+                <div class="nav-icon"><i class="fas fa-file-export"></i></div>
+                <span class="nav-text">Rapports</span>
+                <div class="nav-indicator"></div>
+            </li>
+        </ul>
+        
+        <div class="sidebar-footer">
+            <div class="theme-toggle">
+                <button class="theme-btn" id="themeToggle">
+                    <span class="theme-icon"><i class="fas fa-moon"></i></span>
+                    <span class="theme-text">Mode Sombre</span>
+                </button>
+            </div>
+            <div class="system-status">
+                <div class="status-indicator active"></div>
+                <span class="status-text">Système Actif</span>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Main Content Area -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="main-header">
+            <div class="header-title">
+                <h1>Tableau de Bord Maritime</h1>
+                <p class="header-subtitle">Surveillance et analyse des données de houle en temps réel</p>
+            </div>
+            <div class="header-actions">
+                <button class="btn-secondary" id="refreshData">
+                    <span class="btn-icon"><i class="fas fa-sync-alt"></i></span>
+                    Actualiser
+                </button>
+                <button class="btn-primary" id="startAcquisition">
+                    <span class="btn-icon">▶️</span>
+                    Démarrer Acquisition
+                </button>
+            </div>
+        </header>
+        
+        <!-- Project Information Banner -->
+        <section class="project-info-banner">
+            <div class="project-info-content">
+                <div class="project-main-info">
+                    <div class="project-title">
+                        <h2 id="project-name">Bassin IFREMER 2024</h2>
+                        <span class="project-code" id="project-code">CHN-2024-015</span>
+                    </div>
+                    <div class="project-details">
+                        <div class="project-detail">
+                            <span class="detail-label">Chef de Projet:</span>
+                            <span class="detail-value" id="project-leader">Dr. Marine Dubois</span>
+                        </div>
+                        <div class="project-detail">
+                            <span class="detail-label">Date de Création:</span>
+                            <span class="detail-value" id="project-date">15/01/2024</span>
+                        </div>
+                        <div class="project-detail">
+                            <span class="detail-label">Sondes Actives:</span>
+                            <span class="detail-value" id="project-probes">4/4</span>
+                        </div>
+                        <div class="project-detail">
+                            <span class="detail-label">Statut:</span>
+                            <span class="detail-value status-active" id="project-status">En Acquisition</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="project-actions">
+                    <button class="btn-outline btn-sm" id="editProject">
+                        <i class="fas fa-edit"></i> Modifier
+                    </button>
+                    <button class="btn-outline btn-sm" id="exportConfig">
+                        <i class="fas fa-download"></i> Exporter Config
+                    </button>
+                </div>
+            </div>
+        </section>
+        
+        <!-- KPI Grid -->
+        <section class="kpi-grid">
+            <div class="kpi-card" data-metric="wave-height">
+                <div class="kpi-header">
+                    <div class="kpi-icon"><i class="fas fa-water"></i></div>
+                    <div class="kpi-trend positive">+2.3%</div>
+                </div>
+                <div class="kpi-value">
+                    <span class="kpi-number">2.45</span>
+                    <span class="kpi-unit">m</span>
+                </div>
+                <div class="kpi-label">Hauteur Significative</div>
+                <div class="kpi-sparkline" id="waveHeightSparkline"></div>
+            </div>
+            
+            <div class="kpi-card" data-metric="wave-period">
+                <div class="kpi-header">
+                    <div class="kpi-icon">⏱️</div>
+                    <div class="kpi-trend neutral">0.0%</div>
+                </div>
+                <div class="kpi-value">
+                    <span class="kpi-number">8.2</span>
+                    <span class="kpi-unit">s</span>
+                </div>
+                <div class="kpi-label">Période Moyenne</div>
+                <div class="kpi-sparkline" id="wavePeriodSparkline"></div>
+            </div>
+            
+            <div class="kpi-card" data-metric="acquisition-rate">
+                <div class="kpi-header">
+                    <div class="kpi-icon"><i class="fas fa-chart-bar"></i></div>
+                    <div class="kpi-trend positive">+0.1%</div>
+                </div>
+                <div class="kpi-value">
+                    <span class="kpi-number">50.0</span>
+                    <span class="kpi-unit">Hz</span>
+                </div>
+                <div class="kpi-label">Fréquence d'Acquisition</div>
+                <div class="kpi-sparkline" id="acquisitionRateSparkline"></div>
+            </div>
+            
+            <div class="kpi-card" data-metric="system-health">
+                <div class="kpi-header">
+                    <div class="kpi-icon"><i class="fas fa-heart" style="color: #4CAF50;"></i></div>
+                    <div class="kpi-trend positive">+1.2%</div>
+                </div>
+                <div class="kpi-value">
+                    <span class="kpi-number">98.7</span>
+                    <span class="kpi-unit">%</span>
+                </div>
+                <div class="kpi-label">Santé Système</div>
+                <div class="kpi-sparkline" id="systemHealthSparkline"></div>
+            </div>
+        </section>
+        
+        <!-- Data Visualization -->
+        <section class="data-visualization">
+            <div class="chart-container">
+                <div class="chart-header">
+                    <h3>Évolution de la Houle - Temps Réel</h3>
+                    <div class="chart-controls">
+                        <select class="chart-timeframe">
+                            <option value="1h">1 Heure</option>
+                            <option value="6h" selected>6 Heures</option>
+                            <option value="24h">24 Heures</option>
+                        </select>
+                        <button class="chart-fullscreen"><i class="fas fa-expand"></i></button>
+                    </div>
+                </div>
+                <div class="chart-canvas-container">
+                    <canvas id="waveChart" class="chart-canvas"></canvas>
+                    <div class="chart-loading" id="chartLoading">
+                        <div class="loading-spinner"></div>
+                        <span>Chargement des données...</span>
+                    </div>
+                </div>
+                <div class="chart-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--harbor-blue)"></div>
+                        <span>Hauteur (m)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--tidal-cyan)"></div>
+                        <span>Période (s)</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background: var(--emerald-success)"></div>
+                        <span>Direction (°)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Quick Actions -->
+        <section class="quick-actions">
+            <div class="action-card">
+                <div class="action-icon"><i class="fas fa-bullseye"></i></div>
+                <div class="action-content">
+                    <h4>Calibration Rapide</h4>
+                    <p>Vérifier et ajuster les capteurs</p>
+                </div>
+                <button class="action-btn" data-action="calibration">Lancer</button>
+            </div>
+            
+            <div class="action-card">
+                <div class="action-icon"><i class="fas fa-chart-bar"></i></div>
+                <div class="action-content">
+                    <h4>Analyse Spectrale</h4>
+                    <p>Analyser les fréquences dominantes</p>
+                </div>
+                <button class="action-btn" data-action="spectral-analysis">Analyser</button>
+            </div>
+            
+            <div class="action-card">
+                <div class="action-icon"><i class="fas fa-clipboard-list"></i></div>
+                <div class="action-content">
+                    <h4>Rapport Automatique</h4>
+                    <p>Générer le rapport de session</p>
+                </div>
+                <button class="action-btn" data-action="generate-report">Générer</button>
+            </div>
+        </section>
+    </main>
+    
+    <!-- Scripts -->
+    <script src="js/data-simulation.js"></script>
+    <script src="js/components.js"></script>
+    <script src="js/animations.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
