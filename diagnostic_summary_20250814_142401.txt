@@ -1,0 +1,42 @@
+CHNeoWave - Rapport de Diagnostic
+==================================================
+Date: 2025-08-14T14:24:01.591882
+Statut global: CRITICAL
+
+INFORMATIONS SYSTÈME
+--------------------
+platform: Linux-6.1.147-x86_64-with-glibc2.41
+python_version: 3.13.3
+architecture: 64bit
+processor: x86_64
+cpu_count: 4
+working_directory: /workspace
+python_path: /usr/bin/python3
+memory_info: psutil non disponible
+
+PROBLÈMES CRITIQUES
+--------------------
+❌ Impossible d'importer hrneowave.core.config_manager: No module named 'hrneowave'
+❌ Impossible d'importer hrneowave.core.error_handler: No module named 'hrneowave'
+❌ Impossible d'importer hrneowave.core.performance_monitor: No module named 'hrneowave'
+❌ Impossible d'importer hrneowave.gui.main_window: No module named 'hrneowave'
+❌ Impossible d'importer hrneowave.acquisition.acquisition_controller: No module named 'hrneowave'
+❌ pytest non disponible
+
+AVERTISSEMENTS
+---------------
+⚠️ Package requis manquant: numpy
+⚠️ Package requis manquant: scipy
+⚠️ Package requis manquant: PyQt6
+⚠️ Package requis manquant: PySide6
+⚠️ Package requis manquant: h5py
+⚠️ Package requis manquant: pyqtgraph
+⚠️ Package requis manquant: pytest
+⚠️ Package requis manquant: pytest-qt
+⚠️ pytest-qt non disponible
+⚠️ pyqtgraph non disponible
+
+RECOMMANDATIONS
+---------------
+[IMMEDIATE] Résoudre les problèmes critiques avant tout déploiement
+[HIGH] Corriger la configuration pytest et les tests
